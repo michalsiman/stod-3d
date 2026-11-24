@@ -1,0 +1,403 @@
+:root {
+  --panel: rgba(18, 24, 22, 0.72);
+  --text: #f1efe8;
+  --muted: #b9b5a8;
+  --accent: #d9a35b;
+  --radius: 10px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #c9d6dc; }
+#scene { display: block; width: 100vw; height: 100vh; touch-action: none; }
+
+.panel {
+  position: fixed;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+#title { top: 16px; left: 16px; }
+#title h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; }
+#title h1 span { color: var(--accent); font-weight: 500; }
+#title p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+
+#modes { top: 16px; right: 16px; display: flex; gap: 4px; padding: 5px; }
+#modes button {
+  appearance: none; border: 0; cursor: pointer;
+  background: transparent; color: var(--text);
+  font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 7px;
+}
+#modes button:hover { background: rgba(255, 255, 255, 0.1); }
+#modes button.active { background: var(--accent); color: #1b1a17; font-weight: 600; }
+
+#help {
+  bottom: 40px; left: 16px; max-width: min(440px, calc(100vw - 32px));
+  font-size: 13px; line-height: 1.5; color: var(--muted);
+}
+#help b { color: var(--text); }
+kbd {
+  display: inline-block; min-width: 1.6em; text-align: center;
+  padding: 0 4px; margin: 0 1px; border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14); color: var(--text); font: 12px/1.5 ui-monospace, monospace;
+}
+
+#credits {
+  position: fixed; bottom: 0; right: 0; left: 0; padding: 6px 16px;
+  font-size: 11px; color: #2a2f2c; text-align: right;
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.55));
+}
+#credits a { color: inherit; }
+
+#loader {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: #1f2724; transition: opacity 0.6s; z-index: 10;
+}
+#loader.done { opacity: 0; pointer-events: none; }
+.loader-box { text-align: center; width: 240px; }
+.loader-box h1 { margin: 0 0 6px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+.loader-box p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.bar { height: 3px; background: rgba(255, 255, 255, 0.15); border-radius: 2px; overflow: hidden; }
+#loader-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+
+@media (max-width: 600px) {
+  #title { top: 12px; left: 12px; padding: 8px 12px; }
+  #title h1 { font-size: 18px; }
+  #modes { top: auto; bottom: 34px; right: 12px; }
+  #modes button[data-mode="fly"], #modes button[data-mode="walk"] { display: none; }
+  #help { display: none; }
+}
+
+
+/* ---------------------------------------------------------------- popisky a zajímavosti */
+#labels { z-index: 1; }
+#labels > div { pointer-events: none; }
+.lbl-place {
+  font-weight: 700; color: #1f2a24; letter-spacing: .04em; white-space: nowrap;
+  text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 10px rgba(255,255,255,.8);
+}
+.lbl-place.rank3 { font-size: 22px; text-transform: uppercase; }
+.lbl-place.rank2 { font-size: 16px; }
+.lbl-place.rank1 { font-size: 13px; font-weight: 600; }
+.lbl-street {
+  /* jako uliční cedulka: bílý štítek, červený rámeček */
+  font-size: 11px; font-weight: 600; color: #1d1d1d; white-space: nowrap;
+  background: #fff; border: 2px solid #c8102e; border-radius: 3px;
+  padding: 1px 6px; box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  font-family: "DejaVu Sans", "Segoe UI", Arial, sans-serif;
+}
+.poi {
+  pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  transform: translateY(-50%);
+}
+.poi .poi-name {
+  display: none; font-size: 12px; color: #1b1a17; background: rgba(255,255,255,.85);
+  padding: 1px 6px; border-radius: 4px; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+}
+.poi.named .poi-name, .poi:hover .poi-name { display: block; }
+.poi-ico {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  font-size: 12px; font-weight: 700; color: #fff; border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+  flex: none; font-style: normal;
+}
+.cat-cirkev .poi-ico, .poi-ico.cat-cirkev { background: #7b4fa6; }
+.cat-smirci .poi-ico, .poi-ico.cat-smirci { background: #4a3b8f; }
+.cat-pamatnik .poi-ico, .poi-ico.cat-pamatnik { background: #b23a3a; }
+.cat-stavba .poi-ico, .poi-ico.cat-stavba { background: #a2672c; }
+.cat-priroda .poi-ico, .poi-ico.cat-priroda { background: #3f8a3a; }
+.cat-historie .poi-ico, .poi-ico.cat-historie { background: #6b6250; }
+.cat-obec .poi-ico, .poi-ico.cat-obec { background: #2d6f8f; }
+.cat-turistika .poi-ico, .poi-ico.cat-turistika { background: #c48a12; }
+.cat-sluzby .poi-ico, .poi-ico.cat-sluzby { background: #1f7a7a; font-family: Georgia, serif; }
+
+#poi-panel {
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.15);
+  display: flex; flex-direction: column; gap: 6px; width: 250px;
+}
+.poi-browse { display: flex; flex-direction: column; gap: 6px; }
+.poi-browse[hidden], .tg[hidden] { display: none; }
+.poi-list { max-height: calc(100vh - 470px); }
+#title { max-height: calc(100vh - 32px); overflow-y: auto; z-index: 3; }
+#poi-info[hidden] { display: none; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; }
+.panel-head h2 { margin: 0; font-size: 15px; }
+.panel-close, .poi-close {
+  appearance: none; border: 0; background: transparent; color: var(--text); font-size: 20px; cursor: pointer; line-height: 1;
+}
+.toggles { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.tg { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.tg.strong { font-weight: 600; margin-top: 4px; }
+.tg.sub { padding-left: 18px; color: var(--muted); }
+#poi-panel input[type=search] {
+  font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,.25);
+  background: rgba(0,0,0,.25); color: var(--text);
+}
+.count { font-size: 12px; color: var(--muted); }
+.poi-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 60px; }
+.poi-list button {
+  appearance: none; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px;
+  text-align: left; width: 100%; padding: 4px 2px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  border-radius: 4px;
+}
+.poi-list button:hover { background: rgba(255,255,255,.1); }
+.poi-list .poi-ico { width: 18px; height: 18px; font-size: 11px; }
+
+#poi-info {
+  right: 16px; top: 76px; width: min(340px, calc(100vw - 32px)); max-height: calc(100vh - 140px); overflow-y: auto;
+  z-index: 3; font-size: 14px; line-height: 1.45;
+}
+.poi-head { display: flex; align-items: center; gap: 8px; }
+.poi-head h3 { margin: 0; font-size: 16px; flex: 1; }
+.poi-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.poi-text { margin: 8px 0; }
+.poi-links { margin: 6px 0; padding-left: 18px; font-size: 12px; }
+.poi-links a { color: #f0c88a; word-break: break-all; }
+.poi-src { color: var(--muted); font-size: 11px; }
+.poi-go {
+  margin-top: 8px; appearance: none; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer;
+  background: var(--accent); color: #1b1a17; font: inherit; font-weight: 600;
+}
+#title, #modes, #help { z-index: 2; }
+
+@media (max-width: 600px) {
+  #poi-panel { width: auto; }
+  #title { max-height: 55vh; }
+  #poi-info { top: 70px; right: 12px; left: 12px; width: auto; }
+}
+
+/* ---------------------------------------------------------------- vyhledávání */
+#search { position: relative; margin-top: 10px; width: 250px; }
+#search input {
+  width: 100%; font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: var(--text);
+}
+#search input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+#search .results {
+  list-style: none; margin: 4px 0 0; padding: 4px;
+  background: rgba(0,0,0,.25); border-radius: 7px; max-height: 50vh; overflow-y: auto;
+}
+#search .results[hidden] { display: none; }
+#search li {
+  display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 5px; cursor: pointer; font-size: 13px;
+}
+#search li:hover, #search li.active { background: rgba(255,255,255,.12); }
+#search .res-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#search .res-type { color: var(--muted); font-size: 11px; white-space: nowrap; }
+#search .poi-ico { width: 18px; height: 18px; font-size: 11px; }
+.res-ico { width: 18px; height: 18px; flex: none; border-radius: 50%; display: inline-block; }
+.res-ico.place { background: #2d6f8f; }
+.res-ico.street { background: #fff; border: 2px solid #c8102e; border-radius: 3px; height: 12px; }
+.res-ico.addr { background: #8a8f96; border-radius: 3px; }
+.hl { display: flex; flex-direction: column; align-items: center; transform: translateY(-50%); pointer-events: none; }
+.hl-name {
+  background: var(--accent); color: #1b1a17; font-weight: 700; font-size: 13px; padding: 3px 8px;
+  border-radius: 5px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.hl-pin { color: var(--accent); font-size: 18px; line-height: 1; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+@media (max-width: 600px) { #search { width: auto; } }
+
+/* ---------------------------------------------------------------- hlášení chyb */
+#report-links {
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px;
+}
+#report-links button {
+  appearance: none; border: 1px solid rgba(255,255,255,.3); background: transparent; color: var(--text);
+  font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+}
+#report-links button:hover { background: rgba(255,255,255,.12); }
+#report-links a { color: var(--accent); }
+#report {
+  left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px); overflow-y: auto; z-index: 10; padding: 14px 16px;
+  background: rgba(24, 30, 28, .96);
+}
+#report[hidden] { display: none; }
+#report form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; font-size: 14px; }
+#report label { display: flex; flex-direction: column; gap: 4px; }
+#report small { color: var(--muted); font-weight: 400; }
+#report input, #report select, #report textarea {
+  font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3); color: var(--text);
+}
+#report textarea { resize: vertical; }
+#report input, #report select, #report textarea { width: 100%; min-width: 0; }
+#report .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#report .loc { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+#report .where { font-weight: 600; }
+#report .loc-btns { display: flex; gap: 6px; }
+#report .loc-btns button, #report .close {
+  appearance: none; border: 1px solid rgba(255,255,255,.3); background: transparent; color: var(--text);
+  font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+}
+#report .close { border: 0; font-size: 20px; padding: 0 4px; }
+#report .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+#report .actions { display: flex; align-items: center; gap: 10px; }
+#report button[type=submit] {
+  appearance: none; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer;
+  background: var(--accent); color: #1b1a17; font: inherit; font-weight: 700;
+}
+#report button[type=submit]:disabled { opacity: .6; cursor: wait; }
+#report .msg { font-size: 13px; }
+#report .msg.ok { color: #8fd19e; }
+#report .msg.err { color: #ff9b8f; }
+body.picking #scene { cursor: crosshair; }
+body.picking::after {
+  content: "Klikněte do mapy na místo, kterého se hlášení týká"; position: fixed; top: 16px; left: 50%;
+  transform: translateX(-50%); background: var(--accent); color: #1b1a17; font-weight: 700;
+  padding: 8px 14px; border-radius: 8px; z-index: 10; pointer-events: none;
+}
+@media (max-width: 600px) { #report .two { grid-template-columns: 1fr; } }
+
+/* ---------------------------------------------------------------- nápověda – rozbalovací */
+#help-toggle {
+  bottom: 40px; left: 16px; width: 36px; height: 36px; padding: 0; border: 0; cursor: pointer;
+  color: var(--text); font: inherit; font-size: 18px; font-weight: 700; border-radius: 50%; z-index: 2;
+}
+#help-toggle:hover { background: rgba(40, 50, 46, .9); }
+#help-toggle[hidden], #help[hidden] { display: none; }
+#help { padding-right: 34px; }
+.help-close {
+  position: absolute; top: 4px; right: 6px; appearance: none; border: 0; background: transparent;
+  color: var(--text); font-size: 18px; cursor: pointer; line-height: 1;
+}
+@media (max-width: 600px) { #help-toggle { display: none; } }
+
+#view-opts { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.15); font-size: 13px; }
+
+/* ================================================================ menu – moderní vzhled */
+:root {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --glass: rgba(18, 23, 21, 0.72);
+  --glass-line: rgba(255, 255, 255, 0.09);
+  --soft: rgba(255, 255, 255, 0.07);
+  --soft-2: rgba(255, 255, 255, 0.12);
+  --accent: #e3a04f;
+  --accent-ink: #1c1710;
+}
+.panel {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+#title {
+  top: 14px; left: 14px; width: 292px; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100vh - 28px); overflow-y: auto; scrollbar-width: thin;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo {
+  width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: linear-gradient(135deg, #f0b866, #c9772c); color: var(--accent-ink);
+  font-weight: 800; font-size: 14px; letter-spacing: -0.02em; box-shadow: 0 2px 8px rgba(201, 119, 44, 0.35);
+}
+.brand-text { flex: 1; min-width: 0; }
+.brand-text h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.brand-text p { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+.icon-btn {
+  appearance: none; border: 0; background: var(--soft); color: var(--text); width: 30px; height: 30px;
+  border-radius: 9px; display: grid; place-items: center; cursor: pointer; transition: background .15s, transform .2s;
+}
+.icon-btn:hover { background: var(--soft-2); }
+#title.collapsed .icon-btn svg { transform: rotate(180deg); }
+#title.collapsed .panel-body { display: none; }
+
+/* hledání */
+#search { position: relative; margin: 0; width: auto; }
+#search .search-ico { position: absolute; left: 11px; top: 11px; color: var(--muted); pointer-events: none; }
+#search input {
+  width: 100%; height: 38px; padding: 0 12px 0 34px; font: inherit; font-size: 14px;
+  border-radius: 11px; border: 1px solid var(--glass-line); background: rgba(0, 0, 0, 0.28); color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+#search input::placeholder { color: rgba(241, 239, 232, 0.5); }
+#search input:focus { outline: none; border-color: var(--accent); background: rgba(0, 0, 0, 0.38); }
+#search .results { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--glass-line); border-radius: 11px; margin-top: 6px; }
+#search li { border-radius: 8px; padding: 6px 8px; }
+
+/* sekce */
+.panel-body { display: flex; flex-direction: column; gap: 12px; }
+.panel-body section { display: flex; flex-direction: column; gap: 7px; padding-top: 12px; border-top: 1px solid var(--glass-line); }
+.panel-body section:first-child { border-top: 0; padding-top: 0; }
+.panel-body h3 {
+  margin: 0 0 2px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
+}
+#poi-panel, #view-opts, #report-links { margin: 0; padding: 0; border: 0; width: auto; }
+#view-opts { padding-top: 12px; border-top: 1px solid var(--glass-line); }
+
+/* přepínače (místo zaškrtávátek) */
+.tg { display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer; user-select: none; }
+.tg input {
+  appearance: none; -webkit-appearance: none; margin: 0; flex: none; position: relative; cursor: pointer;
+  width: 32px; height: 18px; border-radius: 999px; background: rgba(255, 255, 255, 0.18); transition: background .18s;
+}
+.tg input::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transition: transform .18s;
+}
+.tg input:checked { background: var(--accent); }
+.tg input:checked::before { transform: translateX(14px); }
+.tg input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tg.strong { font-weight: 500; margin-top: 0; }
+.tg.sub { padding-left: 8px; font-size: 12.5px; color: var(--muted); gap: 8px; }
+.tg.sub input { width: 26px; height: 15px; }
+.tg.sub input::before { width: 11px; height: 11px; }
+.tg.sub input:checked::before { transform: translateX(11px); }
+.toggles { gap: 7px; }
+.count { font-size: 11.5px; }
+.poi-list { background: rgba(0, 0, 0, 0.2); border-radius: 10px; padding: 4px; max-height: 260px; }
+
+/* čas */
+.time-now { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; white-space: nowrap; }
+.time-label { font-weight: 600; font-variant-numeric: tabular-nums; }
+.time-info { color: var(--muted); font-size: 12px; }
+.time-manual { display: flex; flex-direction: column; gap: 8px; }
+.time-manual[hidden] { display: none; }
+.rng { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.rng input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18); outline: none; margin: 6px 0;
+}
+.rng input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent);
+  border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); cursor: pointer;
+}
+.rng input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; cursor: pointer;
+}
+.seasons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: rgba(0, 0, 0, 0.25); padding: 3px; border-radius: 10px; }
+.seasons button {
+  appearance: none; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px;
+  padding: 5px 0; border-radius: 7px; cursor: pointer; transition: background .15s;
+}
+.seasons button:hover { background: var(--soft-2); }
+
+/* hlášení */
+#report-links { gap: 6px; font-size: 12.5px; }
+#report-links .btn { justify-content: center; width: 100%; }
+#report-links a { text-align: center; }
+.btn, #report-links button {
+  appearance: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--glass-line);
+  background: var(--soft); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 500;
+  padding: 7px 11px; border-radius: 10px; cursor: pointer; transition: background .15s;
+}
+.btn:hover, #report-links button:hover { background: var(--soft-2); }
+#report-links a { color: var(--accent); text-decoration: none; font-weight: 500; }
+#report-links a:hover { text-decoration: underline; }
+
+/* ostatní panely ve stejném stylu */
+#poi-info { border-radius: 16px; top: 14px; right: 14px; }
+#report { border-radius: 18px; background: rgba(20, 25, 23, 0.94); }
+#help { border-radius: 14px; }
+#help-toggle { border-radius: 50%; }
+#credits { font-size: 10.5px; }
+
+@media (max-width: 600px) {
+  #title { width: calc(100vw - 24px); left: 12px; top: 12px; }
+}

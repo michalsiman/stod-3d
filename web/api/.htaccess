@@ -1,0 +1,3 @@
+# Apache: hezká adresa api/reports → reports.php
+RewriteEngine On
+RewriteRule ^reports/?$ reports.php [L,QSA]

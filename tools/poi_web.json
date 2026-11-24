@@ -1,0 +1,1394 @@
+[
+ {
+  "name": "Komenského náměstí – historie Stoda",
+  "category": "obec",
+  "lat": 49.63905,
+  "lon": 13.16612,
+  "coord_source": "wikidata",
+  "year": "1235",
+  "text": "První písemná zmínka o Stodu pochází z roku 1235, kdy král Václav I. daroval ves u bavorské cesty na levém břehu Radbuzy chotěšovskému klášteru premonstrátek. Roku 1315 povolil Jan Lucemburský povýšit ves na městys s pátečním týdenním trhem a Karel IV. přidal v roce 1363 právo dědické, soudní, vedení městské knihy a užívání pečeti. Roku 1544 získal Stod várečné právo a o šest let později od Ferdinanda I. právo výročního trhu; městem se stal v roce 1850, kdy zde stálo přes 180 domů s asi 1 500 obyvateli.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Stod",
+   "https://www.mestostod.cz/historie/ms-7678/p1=7678",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617"
+  ]
+ },
+ {
+  "name": "Kostel sv. Máří Magdalény",
+  "category": "cirkev",
+  "lat": 49.63662,
+  "lon": 13.16678,
+  "coord_source": "wikidata",
+  "year": "1567",
+  "text": "Na místě dřevěné kaple, údajně přestavěné roku 1406 na kamennou, dal probošt Adam Haster postavit filiální kostel, který byl 20. srpna 1567 vysvěcen sv. Máří Magdaléně. Dnešní trojlodní stavba se starší věží nad západním průčelím vznikla přestavbou v letech 1841–1843 podle plánů A. Thurnera z Teplé. Vybavení interiéru je barokní až klasicistní, kostel je kulturní památkou a v letech 1992–1995 prošel rekonstrukcí.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1003&p1=2611",
+   "https://www.wikidata.org/wiki/Q38138708"
+  ]
+ },
+ {
+  "name": "Špitální kaple sv. Jana Nepomuckého",
+  "category": "cirkev",
+  "lat": 49.63728,
+  "lon": 13.16644,
+  "coord_source": "wikidata",
+  "year": "1617",
+  "text": "Kaple patřila k městskému špitálu, který roku 1617 založil chotěšovský probošt A. Rudrisch. Jde o šestibokou centrální stavbu s jehlancovou střechou a sanktusníkem z počátku 18. století; oltář sv. Jana Nepomuckého jí roku 1720 daroval stodský rodák J. F. Hammerschmid. Po požáru v roce 1986 byla opravována a slouží pro koncerty a výstavy.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1004&p1=2612",
+   "https://www.wikidata.org/wiki/Q38138700"
+  ]
+ },
+ {
+  "name": "Stará pošta (Suvorovův dům)",
+  "category": "stavba",
+  "lat": 49.63893,
+  "lon": 13.16649,
+  "coord_source": "wikidata",
+  "year": "1747",
+  "text": "Dům čp. 12 na rohu Komenského náměstí s barokní fasádou o třech zdobených štítech, z nichž jeden nese dvouhlavého orla a druhý letopočet přestavby 1747. Listovní a jízdní pošta je zde připomínána již v roce 1548 (stodská poštovní stanice je zakreslena na mapě z roku 1547) a sloužila trase Praha – Plzeň – Klenčí; poštmistr musel chovat sedm koní na přepřah. Později zde býval hostinec U labutě, budova je kulturní památkou a byla obnovena v letech 1997–98.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1006&p1=2610",
+   "https://www.kudyznudy.cz/aktivity/barodkni-budova-stare-posty-ve-stodu",
+   "https://www.wikidata.org/wiki/Q29398518"
+  ]
+ },
+ {
+  "name": "Suvorov ve Stodě (1799)",
+  "category": "historie",
+  "lat": 49.63896,
+  "lon": 13.16655,
+  "coord_source": "wikidata",
+  "year": "1799",
+  "text": "Dne 15. prosince 1799 přijel do Stoda ruský generalissimus A. V. Suvorov a přenocoval v domě Staré pošty čp. 12. Druhý den ráno se slavnostně rozloučil s městem a pokračoval do Plzně a do Prahy. Na fasádu domu byla v roce 1959 osazena pamětní deska.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1007&p1=2618",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1006&p1=2610"
+  ]
+ },
+ {
+  "name": "Hammerschmiedův dům",
+  "category": "stavba",
+  "lat": 49.63825,
+  "lon": 13.16804,
+  "coord_source": "wikidata",
+  "year": "1716",
+  "text": "Jednopatrový dům čp. 161 s mansardovou střechou na pravém břehu Radbuzy nechal roku 1716 přestavět stodský rodák Johann Florian Hammerschmid (1652–1737) z původního domku svého otce, pekaře. Hammerschmid působil v Praze a zemřel jako farář Týnského chrámu; známý je jeho spis Prodromus gloriae Pragenae. Dům je kulturní památkou.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1005&p1=2619",
+   "https://cs.wikipedia.org/wiki/Stod",
+   "https://www.wikidata.org/wiki/Q30720309"
+  ]
+ },
+ {
+  "name": "Sousoší sv. Jana Nepomuckého a Panny Marie",
+  "category": "cirkev",
+  "lat": 49.63896,
+  "lon": 13.16555,
+  "coord_source": "drobnepamatky",
+  "year": "2003",
+  "text": "Sousoší z 1. poloviny 18. století stávalo na Komenského náměstí tak, aby sv. Jan hleděl na dnes zaniklý starý most. Po první světové válce zmizelo z náměstí a bylo nalezeno v soukromé zahradě ve Stříbrské ulici naproti pivovaru. Po restaurování se na náměstí vrátilo v roce 2003.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/7220"
+  ]
+ },
+ {
+  "name": "Háj umučených",
+  "category": "pamatnik",
+  "lat": 49.6461,
+  "lon": 13.16938,
+  "coord_source": "wikidata",
+  "year": "1945",
+  "text": "Pohřebiště obětí transportů smrti z dubna 1945 na severním okraji města mezi železniční tratí a Plzeňskou ulicí. Ostatky asi 240 vězňů byly sem slavnostně uloženy 9. září 1945; původně zde stál březový kříž. Současný žulový památník byl odhalen 25. září 1960 a pohřebiště je kulturní památkou.",
+  "sources": [
+   "https://zachovanipameti.udu.cas.cz/en/monument/479-haj-umucenych-stod",
+   "https://www.wikidata.org/wiki/Q38138715",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617"
+  ]
+ },
+ {
+  "name": "Transport smrti na stodském nádraží (1945)",
+  "category": "historie",
+  "lat": 49.6397,
+  "lon": 13.15545,
+  "coord_source": "osm",
+  "year": "1945",
+  "text": "Dne 13. dubna 1945 zastavil na stodském nádraží evakuační transport vězňů z koncentračních táborů (městská kronika uvádí Buchenwald, další zdroje i Flossenbürg). Nacisté tak zahlazovali stopy před postupujícími spojenci; přes 230 vězňů zemřelo vyčerpáním, hladem nebo bylo zabito. Mrtví byli nejprve pohřbeni v hromadném hrobě a v září 1945 exhumováni a uloženi v Háji umučených.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "https://zachovanipameti.udu.cas.cz/en/monument/479-haj-umucenych-stod",
+   "https://cs.wikipedia.org/wiki/Židovský_hřbitov_ve_Stodě"
+  ]
+ },
+ {
+  "name": "Židovský hřbitov (zaniklý)",
+  "category": "historie",
+  "lat": 49.6318,
+  "lon": 13.161,
+  "coord_source": "wikipedia",
+  "year": "1906",
+  "text": "Židovský hřbitov byl založen roku 1906 za křesťanským hřbitovem v Domažlické ulici; dříve se stodští Židé pohřbívali v Pňovanech. V dubnu 1945 zde byly v hromadném hrobě pohřbeny oběti železničního transportu smrti, exhumované 6.–7. září 1945. Dnes je na místě bažantnice; ve městě stála od roku 1882 také synagoga.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Židovský_hřbitov_ve_Stodě"
+  ]
+ },
+ {
+  "name": "Náměstí ČSA – Stod ve 20. století",
+  "category": "historie",
+  "lat": 49.63928,
+  "lon": 13.16476,
+  "coord_source": "wikidata",
+  "year": "1945",
+  "text": "Během druhé světové války byl převážně německy osídlený Stod součástí Říše a vznikly zde tři zajatecké tábory, jejichž vězni pracovali v cihelně, nábytkárně, na polích a v muniční továrně v Holýšově. Město osvobodila 6. května 1945 americká armáda, poté bylo většinové německé obyvatelstvo vysídleno. V letech 1949–1960 byl Stod okresním městem.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "https://cs.wikipedia.org/wiki/Stod"
+  ]
+ },
+ {
+  "name": "Městský úřad a knihovna Stod (radnice)",
+  "category": "sluzby",
+  "lat": 49.63945,
+  "lon": 13.16487,
+  "coord_source": "osm",
+  "text": "Městský úřad Stod sídlí v radnici na náměstí ČSA 294; ve stejné budově je i městská knihovna s fondem zhruba 40 000 svazků. Stod je od roku 2003 obcí s rozšířenou působností pro okolní obce.",
+  "sources": [
+   "https://mestostod.munipolis.cz/kontakty-a-instituce",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1010&p1=1024",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617"
+  ]
+ },
+ {
+  "name": "Železniční stanice Stod",
+  "category": "sluzby",
+  "lat": 49.63972,
+  "lon": 13.15521,
+  "coord_source": "osm",
+  "year": "1861",
+  "text": "Stanice na trati Plzeň – Furth im Wald byla otevřena 14. října 1861 jako součást České západní dráhy. V roce 1980 byla stará budova nahrazena novou výpravní budovou a přestavěno kolejiště. Od nádraží začíná červená turistická značka na Křížový vrch.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Stod_(nádraží)",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1009&p1=2608"
+  ]
+ },
+ {
+  "name": "Akciový pivovar Stod",
+  "category": "stavba",
+  "lat": 49.642,
+  "lon": 13.16003,
+  "coord_source": "wikidata",
+  "year": "1544",
+  "text": "Areál bývalého pivovaru ve Stříbrské ulici. Várečné právo a možnost zřídit sladovnu a pivovar získal Stod roku 1544, v polovině 19. století zde fungovaly dva pivovary. Pivovarnictví je věnováno jedno ze zastavení naučné stezky Stodsko.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q110948559",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "http://mks.mestostod.cz/vismo/o_utvar.asp?id_org=100972&id_u=1020&p1=2616"
+  ]
+ },
+ {
+  "name": "Kalinův mlýn",
+  "category": "stavba",
+  "lat": 49.63704,
+  "lon": 13.16922,
+  "coord_source": "wikidata",
+  "text": "Bývalý mlýn u Radbuzy v centru Stoda, zapsaný jako kulturní památka. V polovině 19. století měl Stod dva mlýny.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q138447834",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617"
+  ]
+ },
+ {
+  "name": "Cihelna Stod",
+  "category": "stavba",
+  "lat": 49.6441,
+  "lon": 13.1575,
+  "coord_source": "odhad z popisu",
+  "text": "Ve Stodě fungovaly v polovině 19. století dvě cihelny a cihlářství je věnováno zastavení č. 22 naučné stezky Stodsko. Za války v cihelně pracovali váleční zajatci, později prošla rekonstrukcí a novou výstavbou. Poloha je odhadnuta podle ulice U Cihelny.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "http://mks.mestostod.cz/vismo/o_utvar.asp?id_org=100972&id_u=1020&p1=2616",
+   "https://cs.wikipedia.org/wiki/Stod"
+  ]
+ },
+ {
+  "name": "Kaple u mostu ve Stodu",
+  "category": "cirkev",
+  "lat": 49.63726,
+  "lon": 13.1704,
+  "coord_source": "drobnepamatky",
+  "text": "Drobná kaple na pravém břehu Radbuzy u mostu v centru města, evidovaná v databázi drobných památek.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/3948"
+  ]
+ },
+ {
+  "name": "Kříž před kostelem ve Stodu",
+  "category": "cirkev",
+  "lat": 49.63648,
+  "lon": 13.16675,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž stojí před vchodem do kostela sv. Máří Magdalény; další kříž je za kostelem a u kostela je i podstavec neznámé drobné památky.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/4797",
+   "https://www.drobnepamatky.cz/node/3947",
+   "https://www.drobnepamatky.cz/node/8770"
+  ]
+ },
+ {
+  "name": "Kaple u hřbitova jihozápadně od Stodu",
+  "category": "cirkev",
+  "lat": 49.63213,
+  "lon": 13.15983,
+  "coord_source": "drobnepamatky",
+  "text": "Kaple na jihozápadním okraji města u Domažlické ulice v blízkosti městského hřbitova. Nedaleko stojí ještě kaplička a kříž v Domažlické ulici.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/8772",
+   "https://www.drobnepamatky.cz/node/14852",
+   "https://www.drobnepamatky.cz/node/8773"
+  ]
+ },
+ {
+  "name": "Kaplička v Domažlické ulici",
+  "category": "cirkev",
+  "lat": 49.63557,
+  "lon": 13.16431,
+  "coord_source": "drobnepamatky",
+  "text": "Výklenková kaplička vestavěná do zástavby u Domažlické ulice ve Stodu.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/8771"
+  ]
+ },
+ {
+  "name": "Šibeniční vrch",
+  "category": "priroda",
+  "lat": 49.63167,
+  "lon": 13.17496,
+  "coord_source": "osm",
+  "text": "Vršek jihovýchodně od centra Stoda, kolem kterého vede první etapa naučné stezky Stodsko (zastavení č. 3) po červené značce na Křížový vrch. U vrchu stojí drobný kříž.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/o_utvar.asp?id_org=100972&id_u=1020&p1=2616",
+   "https://www.drobnepamatky.cz/node/2556"
+  ]
+ },
+ {
+  "name": "Rybníky na Vrabině",
+  "category": "priroda",
+  "lat": 49.6232,
+  "lon": 13.18942,
+  "coord_source": "wikidata",
+  "text": "Soustava rybníků (Vrabinský, Hluboký, Krásný) pod lesy Vrabiny mezi Stodem a Křížovým vrchem. Je jim věnováno zastavení č. 4 naučné stezky Stodsko.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/o_utvar.asp?id_org=100972&id_u=1020&p1=2616",
+   "https://www.wikidata.org/wiki/Q96156479"
+  ]
+ },
+ {
+  "name": "Úkryt v lesích Vrabiny (1648)",
+  "category": "historie",
+  "lat": 49.62,
+  "lon": 13.195,
+  "coord_source": "odhad z popisu",
+  "year": "1648",
+  "text": "Za třicetileté války opustili v dubnu 1648 zbylí obyvatelé Stoda svá obydlí a ukryli se v lesích Vrabiny před švédským vojskem generála Königsmarka. Podle berní ruly žilo roku 1654 ve Stodě jen 230 lidí. Probošt pak vylidněné panství dosídlil rodinami z Teplé, Lokte a Bavorska.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "https://www.mestostod.cz/historie/ms-7678/p1=7678"
+  ]
+ },
+ {
+  "name": "Krůtí hora",
+  "category": "priroda",
+  "lat": 49.65631,
+  "lon": 13.1604,
+  "coord_source": "osm",
+  "text": "Návrší severně od Stoda, na kterém stojí úpravna vody. Odtud je do města přiváděna pitná voda z nových zdrojů.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617"
+  ]
+ },
+ {
+  "name": "Naučná stezka Stodsko",
+  "category": "turistika",
+  "lat": 49.63912,
+  "lon": 13.16625,
+  "coord_source": "odhad z popisu",
+  "year": "2007",
+  "text": "Stezka s 23 zastaveními začíná na Komenského náměstí a vede po červené značce přes Šibeniční vrch a rybníky na Vrabině na Křížový vrch. Dál pokračuje přes Losinu, Mantov a Chotěšov, Hoříkovice a dvůr Gigant a končí v Háji umučených ve Stodě. Tabule vznikly v letech 2007–2008 a připomínají mimo jiné pivovarnictví, hornictví, vojsko nebo cihlářství.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/o_utvar.asp?id_org=100972&id_u=1020&p1=2616"
+  ]
+ },
+ {
+  "name": "Kaplička ve dvoře Maškrov",
+  "category": "cirkev",
+  "lat": 49.60616,
+  "lon": 13.19581,
+  "coord_source": "drobnepamatky",
+  "text": "Udržovaná kaplička v téměř neobydlené osadě Maškrov, která patří ke katastru Stoda.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/8899"
+  ]
+ },
+ {
+  "name": "Kříž východně od Stodu",
+  "category": "cirkev",
+  "lat": 49.64659,
+  "lon": 13.18176,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž stojí v poli bez přístupové cesty východně od města.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/3625"
+  ]
+ },
+ {
+  "name": "Lelov – náves",
+  "category": "obec",
+  "lat": 49.62,
+  "lon": 13.16496,
+  "coord_source": "osm",
+  "year": "1243",
+  "text": "Lelov leží asi 2 km jižně od Stoda na silnici II/182; první písemná zmínka pochází z roku 1243. V letech 1850–1959 byl samostatnou obcí (do roku 1950 v okrese Stříbro, poté Stod) a od roku 1960 je částí Stoda. Katastr měří 4,35 km², v roce 2011 zde žilo 111 obyvatel.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Lelov_(Stod)"
+  ]
+ },
+ {
+  "name": "Kaple v Lelově",
+  "category": "cirkev",
+  "lat": 49.61971,
+  "lon": 13.16495,
+  "coord_source": "drobnepamatky",
+  "text": "Návesní kaple v Lelově, evidovaná v databázi drobných památek i ve Wikidatech.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/4798",
+   "https://www.wikidata.org/wiki/Q66054821"
+  ]
+ },
+ {
+  "name": "Usedlost čp. 11 v Lelově",
+  "category": "stavba",
+  "lat": 49.62008,
+  "lon": 13.16481,
+  "coord_source": "wikidata",
+  "text": "Venkovská usedlost čp. 11 je jedinou kulturní památkou Lelova (rejstříkové číslo 35921/4-481).",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Lelov_(Stod)",
+   "https://www.wikidata.org/wiki/Q33250402"
+  ]
+ },
+ {
+  "name": "Most přes Merklínku v Lelově",
+  "category": "stavba",
+  "lat": 49.61964,
+  "lon": 13.16672,
+  "coord_source": "wikidata",
+  "text": "Silniční most převádějící cestu přes potok Merklínku na okraji Lelova. Merklínka pramení v Branžovském hvozdu a u Stoda se vlévá do Radbuzy.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q117573678",
+   "https://www.wikidata.org/wiki/Q13432905"
+  ]
+ },
+ {
+  "name": "Kříž u silnice do Stodu (Lelov)",
+  "category": "cirkev",
+  "lat": 49.62022,
+  "lon": 13.16367,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž stojí západně od Lelova u silnice směrem do Stodu.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/1881"
+  ]
+ },
+ {
+  "name": "Kříž u rozcestí západně od Lelova",
+  "category": "cirkev",
+  "lat": 49.61869,
+  "lon": 13.16392,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž na rozcestí polních cest západně od vsi.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/1882"
+  ]
+ },
+ {
+  "name": "Kříž u zaniklé cesty východně od Lelova",
+  "category": "cirkev",
+  "lat": 49.61904,
+  "lon": 13.17126,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž východně od Lelova stojí u dnes již zaniklé cesty.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/1880"
+  ]
+ },
+ {
+  "name": "Kříž nad Lelovem",
+  "category": "cirkev",
+  "lat": 49.61675,
+  "lon": 13.15142,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž u polní cesty na návrší jihozápadně nad Lelovem.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/1883"
+  ]
+ },
+ {
+  "name": "Kříž severně od Lelova",
+  "category": "cirkev",
+  "lat": 49.62335,
+  "lon": 13.16658,
+  "coord_source": "drobnepamatky",
+  "text": "Kříž severně od vsi, při cestě mezi Lelovem a Stodem.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/3626",
+   "https://www.wikidata.org/wiki/Q66055889"
+  ]
+ },
+ {
+  "name": "Hradec – náves",
+  "category": "obec",
+  "lat": 49.63516,
+  "lon": 13.12142,
+  "coord_source": "wikipedia",
+  "year": "1186",
+  "text": "První zmínka o Hradci (k roku 1186) pochází z falza ze 13. století, kde je ves uvedena jako majetek kladrubského kláštera; později ji král Václav II. daroval chotěšovskému klášteru. Ve 14. století zde vzniklo několik drobných zemanských statků a u kostela sv. Jiří snad stávala tvrz. V letech 1960–1990 k obci patřily Lisov a Střelice.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Hradec_(okres_Plzeň-jih)",
+   "https://www.mikroregion-radbuza.cz/o-nas/zakladni-informace-a-seznam-clenu/"
+  ]
+ },
+ {
+  "name": "Hradiště Hradec",
+  "category": "historie",
+  "lat": 49.63463,
+  "lon": 13.11859,
+  "coord_source": "wikidata",
+  "year": "900",
+  "text": "Na ostrožně nad soutokem Radbuzy a Touškovského potoka stálo od 9. století hradiště, na kterém byl v 11. století postaven kostel sv. Vavřince. Sídliště se postupně rozrůstalo k východu a ve 12.–13. století měřilo asi pět hektarů. Hradiště je chráněno jako kulturní památka.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Hradec_(okres_Plzeň-jih)",
+   "https://www.wikidata.org/wiki/Q29877148"
+  ]
+ },
+ {
+  "name": "Bitva u Hradce (1406)",
+  "category": "historie",
+  "lat": 49.637,
+  "lon": 13.125,
+  "coord_source": "odhad z popisu",
+  "year": "1406",
+  "text": "V roce 1406 se u Hradce střetlo vojsko asi sedmi tisíc mužů, které na pokyn krále Václava IV. shromáždil chotěšovský probošt Sulka, s bavorským vojskem Ruprechta Falckého. Podle obce Chotěšov se proboštovi podařilo vpád odrazit a vojsko vyhnat ze země. Přesné místo bitvy není známo.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Hradec_(okres_Plzeň-jih)",
+   "http://www.obec-chotesov.cz/obec/historie/"
+  ]
+ },
+ {
+  "name": "Kostel sv. Jiří (Hradec)",
+  "category": "cirkev",
+  "lat": 49.63607,
+  "lon": 13.12131,
+  "coord_source": "wikidata",
+  "text": "Kostel je zvláštností okolí díky svým dvěma věžím a je kulturní památkou. Jižně od něj se už od poloviny 10. století pohřbívalo; pohřebiště se postupně změnilo v kostelní hřbitov obehnaný zdí. U kostela snad ve středověku stála tvrz zmiňovaná roku 1450.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Hradec_(okres_Plzeň-jih)",
+   "http://www.obec-strelice.cz/obec/informace-o-obci/blizke-okoli/",
+   "https://www.wikidata.org/wiki/Q37291140"
+  ]
+ },
+ {
+  "name": "Fara v Hradci",
+  "category": "stavba",
+  "lat": 49.63609,
+  "lon": 13.12101,
+  "coord_source": "wikidata",
+  "text": "Budova fary u kostela sv. Jiří je zapsaná jako kulturní památka.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Hradec_(okres_Plzeň-jih)",
+   "https://www.wikidata.org/wiki/Q33316325"
+  ]
+ },
+ {
+  "name": "Usedlost čp. 28 (Hradec)",
+  "category": "stavba",
+  "lat": 49.63445,
+  "lon": 13.12087,
+  "coord_source": "wikidata",
+  "text": "Venkovská usedlost čp. 28 v Hradci je chráněna jako kulturní památka.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Hradec_(okres_Plzeň-jih)",
+   "https://www.wikidata.org/wiki/Q37291112"
+  ]
+ },
+ {
+  "name": "Zatopený lom Hradec",
+  "category": "priroda",
+  "lat": 49.63732,
+  "lon": 13.1133,
+  "coord_source": "odhad z popisu",
+  "text": "Zatopený kamenolom v údolí Touškovského potoka, kde se ještě před několika desítkami let těžil kámen. Dnes je oblíbeným koupalištěm a rybářským místem, okolí zarostlo stromy. Přístup je z Hradce směrem na Červený mlýn.",
+  "sources": [
+   "https://www.navylet.cz/cs/cil/zatopeny-lom-hradec",
+   "http://www.obec-strelice.cz/obec/informace-o-obci/blizke-okoli/"
+  ]
+ },
+ {
+  "name": "Kaple mezi Hradcem a Stodem",
+  "category": "cirkev",
+  "lat": 49.63602,
+  "lon": 13.1408,
+  "coord_source": "drobnepamatky",
+  "text": "Kaple stojí u silnice mezi Hradcem a Stodem, nedaleko Střelic.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/1582",
+   "https://www.wikidata.org/wiki/Q66057234"
+  ]
+ },
+ {
+  "name": "Střelice – náves",
+  "category": "obec",
+  "lat": 49.63061,
+  "lon": 13.13464,
+  "coord_source": "wikipedia",
+  "year": "1248",
+  "text": "Osada 4 km jihozápadně od Stoda je poprvé zmíněna roku 1248, kdy ji Václav I. daroval chotěšovským premonstrátkám. Od 15. století byla často zastavována (mimo jiné k Horšovskému Týnu), po roce 1621 se klášteru vrátila a patřila mu až do jeho zrušení. Ve vsi jsou dvě kaple a několik starých usedlostí; v letech 1960–1990 byly Střelice částí Hradce.",
+  "sources": [
+   "http://www.obec-strelice.cz/obec/informace-o-obci/historie/",
+   "https://cs.wikipedia.org/wiki/Střelice_(okres_Plzeň-jih)"
+  ]
+ },
+ {
+  "name": "Kaple ve Střelicích",
+  "category": "cirkev",
+  "lat": 49.63059,
+  "lon": 13.13489,
+  "coord_source": "drobnepamatky",
+  "text": "Jedna ze dvou střelických kaplí; obec uvádí kapli z 1. poloviny 19. století a kapli sv. Jiří z roku 1890. Ve vsi stojí i menší kaplička a kříž.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/3951",
+   "https://www.drobnepamatky.cz/node/3952",
+   "http://www.obec-strelice.cz/obec/informace-o-obci/historie/"
+  ]
+ },
+ {
+  "name": "Kamenný most ve Střelicích",
+  "category": "stavba",
+  "lat": 49.6302,
+  "lon": 13.1343,
+  "coord_source": "odhad z popisu",
+  "text": "Pod návsí vede přes místní potok kamenný dvouobloukový most. Stal se hlavní figurou obecního znaku, který doplňuje opatská berla, lilie, meč sv. Jiří, mlýnské kolo a šípy.",
+  "sources": [
+   "http://www.obec-strelice.cz/obec/informace-o-obci/historie/"
+  ]
+ },
+ {
+  "name": "Mlýn a jez u Střelic",
+  "category": "stavba",
+  "lat": 49.63401,
+  "lon": 13.13378,
+  "coord_source": "odhad z popisu",
+  "text": "Pod Střelicemi na řece Radbuze stojí mlýn; mlýnské kolo je i ve znaku obce. Na řece je zde jez Střelice.",
+  "sources": [
+   "http://www.obec-strelice.cz/obec/informace-o-obci/historie/",
+   "https://www.wikidata.org/wiki/Q123545993"
+  ]
+ },
+ {
+  "name": "Ves Touškov – náves",
+  "category": "obec",
+  "lat": 49.6617,
+  "lon": 13.11927,
+  "coord_source": "wikipedia",
+  "year": "1243",
+  "text": "Místo bylo osídleno již v době bronzové, jak dokládá depot bronzových sekeromlatů. Ves je poprvé zmíněna roku 1243 jako vladycké sídlo, roku 1290 ji koupil chotěšovský klášter. Mimořádně rozlehlá náves se statky z 19. a 20. století byla v roce 1995 prohlášena památkovou zónou lidové architektury.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Ves_Touškov",
+   "http://www.ves-touskov.cz/obec/historie/"
+  ]
+ },
+ {
+  "name": "Kostel sv. Markéty (Ves Touškov)",
+  "category": "cirkev",
+  "lat": 49.6621,
+  "lon": 13.1187,
+  "coord_source": "wikipedia",
+  "year": "1352",
+  "text": "Gotický kostel uváděný jako farní již k roku 1352 byl roku 1846 prodloužen a doplněn kruchtou a věží; fasády jsou novogotické. Hlavní oltář sem byl podle tradice přenesen roku 1845 z děkanského kostela v Plzni. Při opravě v 90. letech 20. století byl objeven původní gotický portál.",
+  "sources": [
+   "http://www.ves-touskov.cz/obec/historie/",
+   "https://cs.wikipedia.org/wiki/Kostel_svaté_Markéty_(Ves_Touškov)"
+  ]
+ },
+ {
+  "name": "Pomník padlým ve Vsi Touškov",
+  "category": "pamatnik",
+  "lat": 49.66187,
+  "lon": 13.11859,
+  "coord_source": "drobnepamatky",
+  "text": "Pomník obětem první světové války stojí před kostelem sv. Markéty spolu s pamětním křížem.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/3923",
+   "https://www.drobnepamatky.cz/node/3924",
+   "http://www.ves-touskov.cz/obec/historie/"
+  ]
+ },
+ {
+  "name": "Pomník J. W. Goetha",
+  "category": "pamatnik",
+  "lat": 49.6624,
+  "lon": 13.11933,
+  "coord_source": "odhad z popisu",
+  "year": "1932",
+  "text": "Podle starých dokumentů ve Vsi Touškov přenocoval básník J. W. Goethe. Na jeho počest byl v parčíku na návsi vybudován pomník, odhalený 22. března 1932 ke stému výročí básníkovy smrti. Poloha je převzata od památníku na návsi evidovaného v databázi drobných památek.",
+  "sources": [
+   "http://www.ves-touskov.cz/obec/historie/",
+   "https://www.drobnepamatky.cz/node/3926"
+  ]
+ },
+ {
+  "name": "Sloup se sochou Panny Marie Immaculaty",
+  "category": "cirkev",
+  "lat": 49.66317,
+  "lon": 13.12099,
+  "coord_source": "wikidata",
+  "text": "Barokní sloup u hřbitova je kulturní památkou. Socha byla restaurována v letech 2000–2001, ale v roce 2005 byla odcizena a zůstal jen podstavec se sloupem.",
+  "sources": [
+   "http://www.ves-touskov.cz/obec/historie/",
+   "https://www.wikidata.org/wiki/Q38188990"
+  ]
+ },
+ {
+  "name": "Socha sv. Jana Nepomuckého (Ves Touškov)",
+  "category": "cirkev",
+  "lat": 49.66158,
+  "lon": 13.11917,
+  "coord_source": "wikidata",
+  "text": "Barokní socha na návsi, chráněná jako kulturní památka, byla restaurována nákladem obce s příspěvkem státu.",
+  "sources": [
+   "http://www.ves-touskov.cz/obec/historie/",
+   "https://www.wikidata.org/wiki/Q38188985"
+  ]
+ },
+ {
+  "name": "Lípa u hřbitova (Ves Touškov)",
+  "category": "priroda",
+  "lat": 49.66317,
+  "lon": 13.1211,
+  "coord_source": "wikidata",
+  "text": "Památný strom u hřbitova ve Vsi Touškov, lípa vysoká asi 20 metrů.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q26789761"
+  ]
+ },
+ {
+  "name": "Touškovský rybník",
+  "category": "priroda",
+  "lat": 49.6681,
+  "lon": 13.1133,
+  "coord_source": "wikidata",
+  "text": "Chovný rybník severozápadně od Vsi Touškov, uváděný mezi zajímavostmi okolí obce.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q12201157",
+   "https://cs.wikipedia.org/wiki/Ves_Touškov"
+  ]
+ },
+ {
+  "name": "Líšina – náves",
+  "category": "obec",
+  "lat": 49.60352,
+  "lon": 13.16455,
+  "coord_source": "wikipedia",
+  "year": "1180",
+  "text": "Ves v údolí Merklínky je poprvé zmíněna roku 1180; okolní mohylové hroby dokládají osídlení už ve 4. století př. n. l. Roku 1227 získala část vsi Vojslava, zakladatelka chotěšovského kláštera, a roku 1421 ji král Zikmund zastavil Janovi z Gutštejna. Při velkém požáru roku 1835 lehla polovina vsi popelem; v letech 1976–1990 byla Líšina částí Stoda.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Líšina",
+   "https://www.lisina.cz/o-obci/"
+  ]
+ },
+ {
+  "name": "Kaple Povýšení sv. Kříže (Líšina)",
+  "category": "cirkev",
+  "lat": 49.6036,
+  "lon": 13.16446,
+  "coord_source": "wikidata",
+  "text": "Osmiboká kaple na návsi u silnice mezi Stodem a Merklínem je dominantou obce a kulturní památkou.",
+  "sources": [
+   "https://www.lisina.cz/o-obci/",
+   "https://www.wikidata.org/wiki/Q37813203"
+  ]
+ },
+ {
+  "name": "Líšinské hradiště",
+  "category": "historie",
+  "lat": 49.6111,
+  "lon": 13.17163,
+  "coord_source": "wikidata",
+  "text": "Asi kilometr severovýchodně od Líšiny se na Líšinském kopci dochovaly terénní pozůstatky pravěkého hradiště.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Líšina",
+   "https://www.wikidata.org/wiki/Q47145453"
+  ]
+ },
+ {
+  "name": "Křížek ve zdi v Líšině",
+  "category": "cirkev",
+  "lat": 49.60436,
+  "lon": 13.16386,
+  "coord_source": "drobnepamatky",
+  "text": "Neobvyklý kříž bez samostatného podstavce: litinový kříž je připevněn přímo na vystupující část zdi.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/8898"
+  ]
+ },
+ {
+  "name": "Chotěšov – náměstí 1. máje",
+  "category": "obec",
+  "lat": 49.65272,
+  "lon": 13.20281,
+  "coord_source": "wikidata",
+  "year": "1115",
+  "text": "Chotěšov je poprvé zmíněn roku 1115 a význam získal po založení kláštera. Obec postihl mor v letech 1520 a 1648, roku 1652 klášter navštívil císař Ferdinand III. a v roce 1757 se zde za sedmileté války ubytoval pruský sbor. Další rozvoj přinesla těžba uhlí a železnice otevřená roku 1861.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/historie/",
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)"
+  ]
+ },
+ {
+  "name": "Klášter premonstrátek Chotěšov",
+  "category": "stavba",
+  "lat": 49.65328,
+  "lon": 13.19824,
+  "coord_source": "wikidata",
+  "year": "1202",
+  "text": "Ženský premonstrátský klášter založil v letech 1202–1210 blahoslavený Hroznata na žádost své sestry Vojslavy. Po vyplenění v roce 1278 a vypálení husity byl obnoven a v letech 1734–1756 vznikla barokní čtyřkřídlá budova konventu, nejspíš podle Jakuba Augustona, s freskami F. J. Luxe. Roku 1782 jej zrušil Josef II., v letech 1950–1973 jej zdevastovala armáda; od roku 2010 je národní kulturní památkou a postupně se opravuje.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Klášter_Chotěšov",
+   "http://www.obec-chotesov.cz/obec/historie/",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1009&p1=2608"
+  ]
+ },
+ {
+  "name": "Upálení velitele kláštera (1421) a mariánský sloup",
+  "category": "historie",
+  "lat": 49.65126,
+  "lon": 13.19642,
+  "coord_source": "wikidata",
+  "year": "1421",
+  "text": "Roku 1421 klášter vypálil Jan Žižka; velitel obránců byl podle tradice zabedněn do vysmoleného sudu a před klášterní branou při cestě ke Stodu upálen. Na místě stál dřevěný kříž a od roku 1687 sloup se sochou Panny Marie, který je dnes kulturní památkou.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/historie/",
+   "https://www.wikidata.org/wiki/Q37159917",
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)"
+  ]
+ },
+ {
+  "name": "Sloup se sochou sv. Jana Nepomuckého (Chotěšov)",
+  "category": "cirkev",
+  "lat": 49.65273,
+  "lon": 13.19644,
+  "coord_source": "web obce",
+  "year": "1700",
+  "text": "Sloup se sochou sv. Jana Nepomuckého dal roku 1700 vztyčit chotěšovský probošt Ondřej Fabritius; na patce je nápis, znak kláštera a Kristovo srdce s monogramem IHS. Po restaurování byl přesunut na nové čestné místo poblíž kláštera.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/socha-svaty-jan-nepomucky/",
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)"
+  ]
+ },
+ {
+  "name": "Kostel Narození Panny Marie (Chotěšov)",
+  "category": "cirkev",
+  "lat": 49.65406,
+  "lon": 13.19953,
+  "coord_source": "wikidata",
+  "year": "1366",
+  "text": "Farní kostel uváděný k roku 1366, kulturní památka. V roce 2025 jej obec Chotěšov získala darem od Biskupství plzeňského a jeho správu svěřila Správě kláštera premonstrátek.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)",
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/kostel-narozeni-panny-marie/",
+   "https://www.wikidata.org/wiki/Q37159885"
+  ]
+ },
+ {
+  "name": "Zaniklý kostel sv. Václava a požár 1837",
+  "category": "historie",
+  "lat": 49.65351,
+  "lon": 13.19811,
+  "coord_source": "wikidata",
+  "year": "1837",
+  "text": "Nejstarší doklad o klášterním kostele sv. Václava je z roku 1227, kdy zde byla pohřbena Vojslava. Po zrušení kláštera chátral a 3. září 1837 na něj přeskočil požár z klášterního dvora, při kterém vyhořely obě věže. Kámen ze zříceného kostela byl téhož roku použit na stavbu ovčína.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Klášter_Chotěšov",
+   "https://www.wikidata.org/wiki/Q47107257"
+  ]
+ },
+ {
+  "name": "Hasičské muzeum v klášteře Chotěšov",
+  "category": "turistika",
+  "lat": 49.65254,
+  "lon": 13.19794,
+  "coord_source": "web obce",
+  "year": "2013",
+  "text": "Muzeum dobrovolných hasičů Plzeňského kraje bylo otevřeno 4. května 2013 v opraveném barokním pavilonu kláštera. Vystavuje hasičskou techniku z 19. a 20. století, vstup je volný.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/hasicske-muzeum/",
+   "https://cs.wikipedia.org/wiki/Klášter_Chotěšov"
+  ]
+ },
+ {
+  "name": "Pivovar a rybárna v Chotěšově",
+  "category": "stavba",
+  "lat": 49.6511,
+  "lon": 13.19978,
+  "coord_source": "wikidata",
+  "text": "Bývalý klášterní pivovar a nedaleká bývalá rybárna s třemi rybníky patří mezi významné historické stavby obce a jsou kulturními památkami.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/",
+   "https://www.wikidata.org/wiki/Q33426884",
+   "https://www.wikidata.org/wiki/Q37159820"
+  ]
+ },
+ {
+  "name": "Boží muka v Dobřanské ulici",
+  "category": "cirkev",
+  "lat": 49.65564,
+  "lon": 13.20634,
+  "coord_source": "wikidata",
+  "text": "Boží muka u silnice v Dobřanské ulici, chráněná jako kulturní památka.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/bozi-muka/",
+   "https://www.wikidata.org/wiki/Q37159854"
+  ]
+ },
+ {
+  "name": "Boží muka severně od Chotěšova",
+  "category": "cirkev",
+  "lat": 49.66237,
+  "lon": 13.20269,
+  "coord_source": "wikidata",
+  "text": "Boží muka severně od obce u cesty k Týnci jsou kulturní památkou.",
+  "sources": [
+   "https://www.drobnepamatky.cz/node/3686",
+   "https://www.wikidata.org/wiki/Q37159900"
+  ]
+ },
+ {
+  "name": "Pomník horníků (Chotěšov)",
+  "category": "pamatnik",
+  "lat": 49.65439,
+  "lon": 13.20646,
+  "coord_source": "wikidata",
+  "text": "Pomník připomíná hornickou minulost Chotěšova a Mantova, kde se od konce 18. století těžilo černé uhlí. Je zapsán jako kulturní památka; nedaleko stojí i pomník padlým.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q37159868",
+   "https://www.drobnepamatky.cz/node/53516",
+   "https://www.drobnepamatky.cz/node/76366",
+   "https://cs.wikipedia.org/wiki/Mantov"
+  ]
+ },
+ {
+  "name": "Jez a lávka přes Radbuzu u Chotěšova",
+  "category": "stavba",
+  "lat": 49.64193,
+  "lon": 13.19654,
+  "coord_source": "web obce",
+  "year": "2025",
+  "text": "U jezu s malou vodní elektrárnou bývala v minulém století veřejná plovárna. Na pilíři bývalého mostu železniční vlečky stála chatka postavená kolem roku 1993 Klubem mladých turistů, která byla v roce 2022 zapálena při natáčení filmu Citlivý člověk. V roce 2025 zde vznikla 74 m dlouhá lávka na cyklotrase Praha – Řezno.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/vychazka-k-jezu-lavka-pres-reku-radbuzu/",
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)"
+  ]
+ },
+ {
+  "name": "Havárie letounu MiG-15 (1953)",
+  "category": "historie",
+  "lat": 49.66421,
+  "lon": 13.20762,
+  "coord_source": "wikidata",
+  "year": "1953",
+  "text": "Podle Wikidat zde 10. února 1953 havaroval proudový letoun MiG-15; nehoda si vyžádala jednu oběť.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q110008760"
+  ]
+ },
+ {
+  "name": "Mantov – náves",
+  "category": "obec",
+  "lat": 49.6481,
+  "lon": 13.2092,
+  "coord_source": "wikipedia",
+  "year": "1272",
+  "text": "Mantov leží na pravém břehu Radbuzy naproti Chotěšovu a poprvé je zmíněn roku 1272. Kolem roku 1780 se zde začalo dobývat černé uhlí; vznikly doly Josef, Mariahilf, Hermann, Dittrich, Austria a Ruska, napojené vlečkou do Stoda. Rodákem je Martin Krippner (1817–1894), zakladatel obce Puhoi na Novém Zélandu.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Mantov",
+   "http://www.obec-chotesov.cz/obec/o-obci/"
+  ]
+ },
+ {
+  "name": "Důl Austria – Metálka (výbuch 1918)",
+  "category": "historie",
+  "lat": 49.64548,
+  "lon": 13.22048,
+  "coord_source": "osm",
+  "year": "1918",
+  "text": "V dnešním průmyslovém areálu Metálka východně od Mantova býval důl Austria, hluboký 250 m a propojený s větrací šachtou Hůrka u Losiny. Dne 28. srpna 1918 zde při výbuchu zahynulo třináct horníků. V letech 1892–1916 k dolu patřila koksovna, uzavřen byl roku 1920.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Mantov"
+  ]
+ },
+ {
+  "name": "Pinky – rybníky na poddolovaném území",
+  "category": "priroda",
+  "lat": 49.64231,
+  "lon": 13.22052,
+  "coord_source": "web obce",
+  "text": "Rybníky Velký a Malý (Pinky) a Šindlerák vznikly poklesem terénu po těžbě v černouhelném dole Austria. Podmáčené louky kolem nich hostí cenné mokřadní společenstvo rostlin a živočichů. Leží mezi Losinou, Mantovem a Vstiší.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/pinky/"
+  ]
+ },
+ {
+  "name": "Hornická kolonie Werk",
+  "category": "stavba",
+  "lat": 49.6417,
+  "lon": 13.21233,
+  "coord_source": "wikidata",
+  "text": "Dělnické domy bývalé hornické kolonie Werk v Mantově jsou chráněny jako kulturní památka; připomínají éru uhelných dolů v okolí.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Mantov",
+   "https://www.wikidata.org/wiki/Q37818711"
+  ]
+ },
+ {
+  "name": "Losina – náves",
+  "category": "obec",
+  "lat": 49.6375,
+  "lon": 13.2194,
+  "coord_source": "wikipedia",
+  "year": "1272",
+  "text": "Losina je poprvé zmíněna roku 1272 jako klášterní ves. Na jejím východním okraji založil H. D. Lindheim roku 1856 důl Hůrka; těžba byla obnovena v letech 1921–1929 dolem Hůrka II hlubokým 100 m. Od konce těžby je ves zemědělská, má opravenou kapličku a park.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Losina",
+   "http://www.obec-chotesov.cz/obec/o-obci/"
+  ]
+ },
+ {
+  "name": "Rozhledna na Křížovém vrchu",
+  "category": "turistika",
+  "lat": 49.62189,
+  "lon": 13.21277,
+  "coord_source": "web obce",
+  "text": "Vyhlídková věž u kostela na Křížovém vrchu (487 m) je vysoká 22 m, vyhlídková plošina leží ve 13 m. Je odtud výhled na vrcholky Českého lesa, Chotěšov s klášterem a Stod; věž je otevřena v turistické sezóně. Vedou sem značené cesty ze Stoda (červená) a z Chotěšova (zelená) a z Losiny dvoukilometrová naučná stezka.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/krizovy-vrch/",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1009&p1=2608",
+   "https://www.navylet.cz/cs/cil/krizovy-vrch-u-chotesova-dnesice",
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/stezka-kolem-krizoveho-vrchu/"
+  ]
+ },
+ {
+  "name": "Poutní kostel na Křížovém vrchu (Vrabina)",
+  "category": "cirkev",
+  "lat": 49.6219,
+  "lon": 13.21292,
+  "coord_source": "osm",
+  "year": "1747",
+  "text": "Vrch Vrabina koupil chotěšovský klášter roku 1243; od roku 1739 zde stál kříž a v letech 1747–1756 dal probošt Schmiedl postavit kostel sv. Kříže, zrušený a zbořený po josefínských reformách. V letech 1859–1862 vznikl nový poutní kostel s hostincem a křížovou cestou se sochami. Od roku 1967 vrch obsadila armáda, kostel zchátral a po roce 1995 byl s pomocí Mikroregionu Radbuza zastřešen a zachráněn.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/krizovy-vrch/",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1008&p1=2609",
+   "https://www.kudyznudy.cz/aktivity/poutni-misto-krizovy-vrch-u-stodu",
+   "https://cs.wikipedia.org/wiki/Losina"
+  ]
+ },
+ {
+  "name": "Hrad na Vrabině – pověst o třech bílých pannách",
+  "category": "historie",
+  "lat": 49.62205,
+  "lon": 13.2131,
+  "coord_source": "odhad z popisu",
+  "text": "Podle archeologických spekulací stával na Vrabině hrad, který byl zbořen. Váže se k němu pověst o třech bílých pannách, které hrad obývaly a v noci strašily lidi. Podle jiné místní pověsti vedla z kostela podzemní chodba do chotěšovského kláštera.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/turistika/krizovy-vrch/",
+   "https://www.navylet.cz/cs/cil/krizovy-vrch-u-chotesova-dnesice",
+   "http://www.obec-strelice.cz/obec/informace-o-obci/blizke-okoli/"
+  ]
+ },
+ {
+  "name": "Týnec – náves",
+  "category": "obec",
+  "lat": 49.6714,
+  "lon": 13.195,
+  "coord_source": "wikipedia",
+  "year": "1272",
+  "text": "Nejmenší část obce Chotěšov je poprvé zmíněna roku 1272 jako klášterní majetek a byla vždy čistě zemědělská. Dominantou je patrová budova bývalé školy z roku 1912, uprostřed návsi stojí kaple z roku 1926 a rybník.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Týnec_(Chotěšov)",
+   "http://www.obec-chotesov.cz/obec/o-obci/"
+  ]
+ },
+ {
+  "name": "Boží muka u Hoříkovic",
+  "category": "cirkev",
+  "lat": 49.67072,
+  "lon": 13.18264,
+  "coord_source": "wikidata",
+  "year": "1236",
+  "text": "Boží muka u silnice jižně od Hoříkovic jsou kulturní památkou. Hoříkovice jsou poprvé zmíněny roku 1236 v souvislosti s majetkem chotěšovského kláštera.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q37278520",
+   "https://www.drobnepamatky.cz/node/1544",
+   "https://cs.wikipedia.org/wiki/Hoříkovice_(Chotěšov)"
+  ]
+ },
+ {
+  "name": "Lažany – náves",
+  "category": "obec",
+  "lat": 49.5978,
+  "lon": 13.2136,
+  "coord_source": "wikipedia",
+  "year": "1250",
+  "text": "Malá ves, dnes část Přestavlk, je poprvé zmíněna roku 1250. V letech 1900–1929 patřila jako osada k městu Stod. Ve vsi stojí bývalá rasovna.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Lažany_(Přestavlky)",
+   "https://www.wikidata.org/wiki/Q55956683"
+  ]
+ },
+ {
+  "name": "Hradiště na vrchu Trný",
+  "category": "historie",
+  "lat": 49.60298,
+  "lon": 13.12754,
+  "coord_source": "wikidata",
+  "text": "Na nižším ze dvou vrcholů vrchu Trný (509 m) severovýchodně od Holýšova se dochoval val s příkopem pravěkého hradiště. Archeologický výzkum zde doložil keramiku z pozdní doby halštatské. Místo se nazývalo U Zámku a podle pověsti tu stál středověký hrad.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Holýšov_(hradiště)",
+   "https://www.wikidata.org/wiki/Q43262698"
+  ]
+ },
+ {
+  "name": "ZŠ a MŠ Stod",
+  "category": "sluzby",
+  "lat": 49.63919,
+  "lon": 13.16629,
+  "coord_source": "osm",
+  "text": "Základní a mateřská škola Stod sídlí na Komenského náměstí 10.",
+  "sources": [
+   "https://mestostod.munipolis.cz/kontakty-a-instituce"
+  ]
+ },
+ {
+  "name": "Nemocnice Stod",
+  "category": "sluzby",
+  "lat": 49.63638,
+  "lon": 13.15504,
+  "coord_source": "osm",
+  "year": "1963",
+  "text": "Nemocnice v Hradecké ulici čp. 600 byla postavena v roce 1963 a slouží obyvatelům širokého okolí; v areálu je i lékárna.",
+  "sources": [
+   "https://mestostod.munipolis.cz/kontakty-a-instituce",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "https://www.openstreetmap.org/#map=19/49.63638/13.15504"
+  ]
+ },
+ {
+  "name": "Pošta Stod",
+  "category": "sluzby",
+  "lat": 49.64134,
+  "lon": 13.16325,
+  "coord_source": "osm",
+  "text": "Pobočka České pošty Stod, Stříbrská 80.",
+  "sources": [
+   "https://mestostod.munipolis.cz/kontakty-a-instituce"
+  ]
+ },
+ {
+  "name": "Základní umělecká škola Stod",
+  "category": "sluzby",
+  "lat": 49.63985,
+  "lon": 13.16163,
+  "coord_source": "adresa",
+  "text": "ZUŠ Stod sídlí v Dělnické ulici čp. 511.",
+  "sources": [
+   "https://mestostod.munipolis.cz/kontakty-a-instituce"
+  ]
+ },
+ {
+  "name": "Kulturní dům a Dům dětí a mládeže Stod",
+  "category": "sluzby",
+  "lat": 49.63998,
+  "lon": 13.15695,
+  "coord_source": "adresa",
+  "text": "V budově Nádražní 722 sídlí kulturní dům s velkým a malým sálem (plesy, koncerty, divadlo, oslavy) a Dům dětí a mládeže.",
+  "sources": [
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1018&p1=1154",
+   "https://mestostod.munipolis.cz/kontakty-a-instituce"
+  ]
+ },
+ {
+  "name": "Sportovní areál a letní kino Stod",
+  "category": "sluzby",
+  "lat": 49.63673,
+  "lon": 13.16017,
+  "coord_source": "osm",
+  "year": "1957",
+  "text": "Areál s fotbalovým hřištěm a atletickou dráhou si občané postavili svépomocí v letech 1957–1959. Později přibyla sportovní hala, víceúčelové hřiště, tenisové a volejbalové kurty a znovu bylo zprovozněno letní kino.",
+  "sources": [
+   "https://www.mestostod.cz/historie/ms-7678/p1=7678",
+   "http://mks.mestostod.cz/vismo/dokumenty2.asp?id_org=100972&id=1001&p1=2617",
+   "https://cs.wikipedia.org/wiki/Stod"
+  ]
+ },
+ {
+  "name": "Sběrný dvůr Stod",
+  "category": "sluzby",
+  "lat": 49.64556,
+  "lon": 13.16283,
+  "coord_source": "osm",
+  "text": "Městský sběrný dvůr v průmyslové zóně na severu Stoda, otevřený v úterý, čtvrtek a sobotu.",
+  "sources": [
+   "https://www.mestostod.cz/sberny-dvur/ds-1121"
+  ]
+ },
+ {
+  "name": "Lékařské a zubní ordinace, Hradecká 435",
+  "category": "sluzby",
+  "lat": 49.63895,
+  "lon": 13.15942,
+  "coord_source": "osm",
+  "text": "V domě Hradecká 435 ve Stodu jsou zubní ordinace a psychiatrická ambulance.",
+  "sources": [
+   "https://www.openstreetmap.org/#map=19/49.63895/13.15942"
+  ]
+ },
+ {
+  "name": "Lékárna Stod (Dělnická ulice)",
+  "category": "sluzby",
+  "lat": 49.63981,
+  "lon": 13.16228,
+  "coord_source": "osm",
+  "text": "Veřejná lékárna v centru Stoda nedaleko náměstí ČSA.",
+  "sources": [
+   "https://www.openstreetmap.org/#map=19/49.63981/13.16228"
+  ]
+ },
+ {
+  "name": "Odborné učiliště – škola Stod",
+  "category": "sluzby",
+  "lat": 49.64226,
+  "lon": 13.16589,
+  "coord_source": "osm",
+  "text": "Pracoviště Středního odborného učiliště Domažlice ve Stodě.",
+  "sources": [
+   "https://www.openstreetmap.org/#map=19/49.64226/13.16589"
+  ]
+ },
+ {
+  "name": "Obecní úřad Chotěšov a zdravotní středisko",
+  "category": "sluzby",
+  "lat": 49.65447,
+  "lon": 13.19859,
+  "coord_source": "osm",
+  "text": "Obecní úřad sídlí na adrese Plzeňská 88. Ve stejném objektu jsou ordinace praktického lékaře, zubní a gynekologická ordinace a lékárna; obec má i ordinaci pro děti a dorost.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/historie/",
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)"
+  ]
+ },
+ {
+  "name": "Základní škola a sportovní hala Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65143,
+  "lon": 13.19592,
+  "coord_source": "osm",
+  "text": "Bezbariérová základní škola s 1. i 2. stupněm; součástí areálu je víceúčelové hřiště z roku 2009 a přistavěná sportovní hala. Naproti škole stojí socha Panny Marie.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/",
+   "https://www.obec-chotesov.cz/skolstvi-a-spolky/zs-chotesov/"
+  ]
+ },
+ {
+  "name": "Mateřská škola Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65409,
+  "lon": 13.20883,
+  "coord_source": "adresa",
+  "text": "Mateřská škola v Luční ulici čp. 590 s kapacitou 100 dětí.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/"
+  ]
+ },
+ {
+  "name": "Národní dům Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65659,
+  "lon": 13.20413,
+  "coord_source": "adresa",
+  "text": "Národní dům v ulici Osvobozených politických vězňů je obecní společenský sál, který obec pronajímá pro plesy, kulturní akce a spolky.",
+  "sources": [
+   "https://www.obec-chotesov.cz/obecni-urad/sprava-kulturniho-zarizeni/"
+  ]
+ },
+ {
+  "name": "Knihovna Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65674,
+  "lon": 13.20416,
+  "coord_source": "osm",
+  "text": "Obecní knihovna v Chotěšově.",
+  "sources": [
+   "https://knihovnachotesov.webk.cz/"
+  ]
+ },
+ {
+  "name": "Pošta Chotěšov",
+  "category": "sluzby",
+  "lat": 49.6565,
+  "lon": 13.19964,
+  "coord_source": "osm",
+  "text": "Pobočka České pošty Chotěšov (PSČ 332 14).",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q118155867"
+  ]
+ },
+ {
+  "name": "Zastávka Chotěšov u Stoda",
+  "category": "sluzby",
+  "lat": 49.65706,
+  "lon": 13.19829,
+  "coord_source": "osm",
+  "year": "1861",
+  "text": "Železniční zastávka na trati Plzeň – Furth im Wald; železnice přes Chotěšov vede od roku 1861.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)",
+   "https://www.wikidata.org/wiki/Q18613949"
+  ]
+ },
+ {
+  "name": "Hasičská zbrojnice SDH Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65291,
+  "lon": 13.20138,
+  "coord_source": "osm",
+  "text": "Zbrojnice Sboru dobrovolných hasičů Chotěšov u ulice U Zbrojnice.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/",
+   "https://www.openstreetmap.org/#map=19/49.65291/13.20138"
+  ]
+ },
+ {
+  "name": "Fotbalový areál TJ Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65192,
+  "lon": 13.21094,
+  "coord_source": "osm",
+  "text": "Fotbalový areál byl rekonstruován po povodních v roce 2002 a hraje na něm pět mužstev od žáků po starou gardu.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/",
+   "http://www.obec-chotesov.cz/obec/volny-cas-a-zajimava-mista-1/sport-detska-hriste/fotbalove-hriste/"
+  ]
+ },
+ {
+  "name": "Stadion TJ Baník Mantov",
+  "category": "sluzby",
+  "lat": 49.64219,
+  "lon": 13.20224,
+  "coord_source": "osm",
+  "text": "Fotbalový stadion TJ Baník Mantov, kde se konají i kulturní akce pro veřejnost.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/"
+  ]
+ },
+ {
+  "name": "Sběrný dvůr Chotěšov (Mantov)",
+  "category": "sluzby",
+  "lat": 49.64756,
+  "lon": 13.21285,
+  "coord_source": "osm",
+  "text": "Obecní sběrný dvůr v Mantově, otevřený v pondělí, středu, pátek a sobotu.",
+  "sources": [
+   "https://www.obec-chotesov.cz/obecni-urad/odpady-sberny-dvur/"
+  ]
+ },
+ {
+  "name": "Sportoviště Losina",
+  "category": "sluzby",
+  "lat": 49.63919,
+  "lon": 13.21779,
+  "coord_source": "osm",
+  "text": "V Losině je k dispozici tenisový kurt, hřiště na plážový volejbal i squash.",
+  "sources": [
+   "http://www.obec-chotesov.cz/obec/o-obci/"
+  ]
+ },
+ {
+  "name": "Sportovní letiště Chotěšov",
+  "category": "sluzby",
+  "lat": 49.65167,
+  "lon": 13.18972,
+  "coord_source": "wikidata",
+  "text": "Na okraji obce je plocha Aviatik klubu Chotěšov pro sportovní létající zařízení.",
+  "sources": [
+   "https://cs.wikipedia.org/wiki/Chotěšov_(okres_Plzeň-jih)",
+   "https://www.wikidata.org/wiki/Q115712231"
+  ]
+ },
+ {
+  "name": "Obecní úřad a pošta Hradec",
+  "category": "sluzby",
+  "lat": 49.6355,
+  "lon": 13.12231,
+  "coord_source": "osm",
+  "text": "Obecní úřad Hradec a vedle něj pošta Hradec u Stoda (PSČ 332 11).",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q118155866",
+   "https://www.mikroregion-radbuza.cz/o-nas/zakladni-informace-a-seznam-clenu/"
+  ]
+ },
+ {
+  "name": "Zastávka Hradec u Stoda",
+  "category": "sluzby",
+  "lat": 49.63612,
+  "lon": 13.12249,
+  "coord_source": "osm",
+  "text": "Železniční zastávka na trati Plzeň – Furth im Wald; od ní je to krátká procházka k zatopenému lomu.",
+  "sources": [
+   "https://www.wikidata.org/wiki/Q66888498",
+   "https://www.navylet.cz/cs/cil/zatopeny-lom-hradec"
+  ]
+ },
+ {
+  "name": "Obecní úřad Střelice",
+  "category": "sluzby",
+  "lat": 49.63087,
+  "lon": 13.1353,
+  "coord_source": "osm",
+  "text": "Obecní úřad Střelice čp. 28; obec má zrekonstruovaný obecní sál pro společenské akce a dětské hřiště.",
+  "sources": [
+   "http://www.obec-strelice.cz/obec/informace-o-obci/historie/",
+   "http://www.obec-strelice.cz/obec/informace-o-obci/blizke-okoli/"
+  ]
+ },
+ {
+  "name": "Obecní úřad Ves Touškov",
+  "category": "sluzby",
+  "lat": 49.66174,
+  "lon": 13.11971,
+  "coord_source": "osm",
+  "text": "Obecní úřad Ves Touškov čp. 17. Místní dvoutřídní škola fungovala od roku 1871 do roku 2003.",
+  "sources": [
+   "http://www.ves-touskov.cz/obec/historie/"
+  ]
+ },
+ {
+  "name": "Obecní úřad Líšina",
+  "category": "sluzby",
+  "lat": 49.60308,
+  "lon": 13.16578,
+  "coord_source": "osm",
+  "text": "Obecní úřad sídlí v rekonstruované budově bývalé školy (Líšina 52), jejíž zasedací místnost slouží i pro kulturní a společenské akce. Na okraji obce je sportovní areál fotbalového klubu.",
+  "sources": [
+   "https://www.lisina.cz/o-obci/",
+   "https://cs.wikipedia.org/wiki/Líšina"
+  ]
+ }
+]

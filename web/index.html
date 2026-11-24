@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>3D Stodsko</title>
+  <meta name="description" content="3D Stodsko – interaktivní 3D mapa Stodu, Lelova a okolí z otevřených dat ČÚZK, eAGRI a OpenStreetMap.">
+  <link rel="stylesheet" href="vendor/inter.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.js",
+      "three/addons/": "./vendor/three/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div id="loader">
+    <div class="loader-box">
+      <h1>Stodsko</h1>
+      <p id="loader-text">Načítám terén…</p>
+      <div class="bar"><div id="loader-bar"></div></div>
+    </div>
+  </div>
+
+  <header class="panel" id="title">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">3D</div>
+      <div class="brand-text">
+        <h1>Stodsko</h1>
+        <p>Stod · Lelov · okolí</p>
+      </div>
+      <button id="panel-collapse" class="icon-btn" title="Sbalit / rozbalit menu" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div id="search">
+      <svg class="search-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="search" placeholder="Hledat ulici, adresu, památku…" autocomplete="off" aria-label="Hledat">
+      <ul class="results" hidden></ul>
+    </div>
+    <div class="panel-body">
+      <section>
+        <h3>Vrstvy</h3>
+        <div id="poi-panel">
+          <div class="toggles"></div>
+          <div class="poi-browse" hidden>
+            <div class="count"></div>
+            <ul class="poi-list"></ul>
+          </div>
+        </div>
+      </section>
+      <section id="time-opts">
+        <h3>Slunce a čas</h3>
+        <label class="tg"><input type="checkbox" id="time-live" checked> Aktuální čas</label>
+        <div class="time-now"><span class="time-label"></span><span class="time-info"></span></div>
+        <div class="time-manual" hidden>
+          <label class="rng"><span>Den v roce</span><input type="range" id="time-day" min="1" max="365" value="172"></label>
+          <div class="seasons">
+            <button data-season="80">Jaro</button><button data-season="172">Léto</button>
+            <button data-season="266">Podzim</button><button data-season="355">Zima</button>
+          </div>
+          <label class="rng"><span>Denní doba</span><input type="range" id="time-min" min="0" max="1430" step="10" value="840"></label>
+        </div>
+      </section>
+      <section id="view-opts">
+        <h3>Zobrazení</h3>
+        <label class="tg"><input type="checkbox" id="shadows"> Stíny</label>
+      </section>
+      <section id="report-links">
+        <button id="report-open" class="btn">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          Nahlásit chybu / změnu
+        </button>
+        <a href="hlaseni.html">Všechna hlášení →</a>
+      </section>
+    </div>
+  </header>
+
+  <div id="report" class="panel" hidden>
+    <div class="panel-head">
+      <h2>Nahlásit chybu nebo změnu</h2>
+      <button class="close" title="Zavřít">×</button>
+    </div>
+    <form>
+      <label>Co nahlašujete
+        <select name="type">
+          <option value="chyba">Chyba v mapě (špatná budova, cesta, název…)</option>
+          <option value="chybi">Chybějící místo nebo objekt</option>
+          <option value="zmena">Změna v terénu / nová stavba / zbouráno</option>
+          <option value="jine">Jiné</option>
+        </select>
+      </label>
+      <label>Popis
+        <textarea name="text" rows="4" required minlength="5" maxlength="2000" placeholder="Co je špatně nebo co se změnilo…"></textarea>
+      </label>
+      <div class="loc">
+        <span>Místo: <b class="where"></b></span>
+        <div class="loc-btns">
+          <button type="button" class="here">Střed pohledu</button>
+          <button type="button" class="pick">Vybrat v mapě</button>
+        </div>
+      </div>
+      <div class="two">
+        <label>Jméno <small>(nepovinné, zobrazí se)</small><input name="name" maxlength="80"></label>
+        <label>E-mail <small>(nepovinné, nezveřejní se)</small><input name="email" type="email" maxlength="120"></label>
+      </div>
+      <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
+      <div class="actions">
+        <button type="submit">Odeslat hlášení</button>
+        <span class="msg"></span>
+      </div>
+    </form>
+  </div>
+
+
+
+  <article class="panel" id="poi-info" hidden></article>
+
+  <button id="help-toggle" class="panel" title="Ovládání mapy" aria-expanded="false" aria-controls="help">?</button>
+  <aside class="panel" id="help" hidden>
+    <button class="help-close" title="Zabalit">×</button>
+    <div data-help="orbit">
+      <b>Mapa</b> · levé tlačítko otáčí, pravé posouvá, kolečko přibližuje.<br>
+      Klávesy: <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> posun,
+      <kbd>Q</kbd>/<kbd>E</kbd> nebo <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> otáčení,
+      <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> náklon, <kbd>+</kbd>/<kbd>−</kbd> přiblížení.<br>
+      <kbd>F</kbd> volný let, <kbd>G</kbd> chůze, <kbd>O</kbd> zpět na mapu, <kbd>R</kbd> na Stod.
+      Na mobilu jedním prstem otáčíte, dvěma posouváte a přibližujete.
+    </div>
+    <div data-help="fly" hidden>
+      <b>Let</b> · klikněte do scény, myší se rozhlížíte.
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> pohyb,
+      <kbd>E</kbd>/<kbd>Q</kbd> nahoru/dolů, <kbd>Shift</kbd> rychle, <kbd>Esc</kbd> uvolní myš.
+    </div>
+    <div data-help="walk" hidden>
+      <b>Chůze</b> · jako let, ale držíte se ve výšce očí nad terénem.
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, <kbd>Shift</kbd> běh, <kbd>Esc</kbd> uvolní myš.
+    </div>
+  </aside>
+
+  <footer id="credits">
+    Data: <a href="https://geoportal.cuzk.cz" target="_blank" rel="noopener">© ČÚZK</a>
+    (DMR 5G, DMP 1G, ZABAGED, RÚIAN) ·
+    <a href="https://eagri.cz/public/portal/mze/farmar/LPIS" target="_blank" rel="noopener">LPIS eAGRI</a> ·
+    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© přispěvatelé OpenStreetMap</a> ·
+    <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> ·
+    <a href="https://cs.wikipedia.org" target="_blank" rel="noopener">Wikipedie (CC BY-SA)</a>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

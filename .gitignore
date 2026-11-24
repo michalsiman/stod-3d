@@ -1,0 +1,9 @@
+cache/
+__pycache__/
+.venv/
+reports/
+web/api/data/*.json
+web/api/data/*.lock
+web/api/data/*.tmp
+dist/
+launcher/web/
