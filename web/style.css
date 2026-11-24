@@ -401,3 +401,59 @@ body.picking::after {
 @media (max-width: 600px) {
   #title { width: calc(100vw - 24px); left: 12px; top: 12px; }
 }
+
+/* ---------------------------------------------------------------- projížďka autem */
+#drive-hud {
+  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 3;
+  display: grid; grid-template-columns: auto minmax(160px, 1fr) auto; align-items: center; gap: 14px;
+  padding: 10px 14px; border-radius: 16px; min-width: min(560px, calc(100vw - 24px));
+  background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+#drive-hud[hidden], #drive-touch[hidden] { display: none; }
+.dh-speed { display: flex; align-items: baseline; gap: 4px; min-width: 96px; }
+.dh-speed b { font-size: 38px; line-height: 1; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text); }
+.dh-speed span { font-size: 12px; color: var(--muted); }
+.dh-street { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-surface { font-size: 12px; color: var(--accent); min-height: 1em; }
+.dh-tools { display: flex; gap: 4px; }
+.dh-tools button {
+  appearance: none; border: 0; cursor: pointer; width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1); color: var(--text); font-size: 17px;
+}
+.dh-tools button:hover { background: rgba(255, 255, 255, 0.2); }
+.dh-help { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); text-align: center; margin-top: -4px; }
+.dh-map { position: fixed; right: 16px; top: 76px; width: 180px; height: 180px; border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); border: 2px solid rgba(255, 255, 255, 0.6); }
+.dh-goal { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); padding: 8px 16px; border-radius: 12px;
+  background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 14px;
+  white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+.dh-goal[hidden] { display: none; }
+.dh-goal b { color: var(--accent); }
+body.driving #help, body.driving #help-toggle, body.driving #poi-info { display: none; }
+
+#drive-touch { position: fixed; inset: auto 0 120px 0; z-index: 3; display: flex; justify-content: space-between;
+  padding: 0 14px; pointer-events: none; }
+#drive-touch > div { display: flex; gap: 12px; pointer-events: auto; }
+#drive-touch button {
+  appearance: none; border: 0; width: 72px; height: 72px; border-radius: 50%; font-size: 26px;
+  background: rgba(18, 24, 22, 0.55); color: #fff; backdrop-filter: blur(6px); touch-action: none; user-select: none;
+}
+#drive-touch button.on { background: var(--accent); color: #1b1a17; }
+#drive-touch .gas { background: rgba(46, 140, 80, 0.7); }
+#drive-touch .brake { background: rgba(170, 50, 50, 0.65); }
+
+@media (max-width: 600px) {
+  body.driving #title { display: none; }
+  #drive-hud { top: 12px; bottom: auto; left: 12px; right: 12px; transform: none; min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; padding: 8px 10px; }
+  .dh-speed { min-width: 0; }
+  .dh-speed b { font-size: 28px; }
+  .dh-street { font-size: 14px; }
+  .dh-tools { grid-column: 1 / -1; justify-content: space-between; }
+  .dh-tools button { flex: 1; }
+  .dh-help { display: none; }
+  #drive-touch { bottom: 84px; }
+  .dh-map { width: 112px; height: 112px; top: 132px; right: 12px; }
+  .dh-goal { top: 132px; left: 12px; transform: none; max-width: calc(100vw - 150px); font-size: 12.5px; white-space: normal; }
+}

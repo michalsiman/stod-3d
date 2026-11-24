@@ -13,10 +13,10 @@ const WINDOW_GLSL = /* glsl */ `
 uniform float uNight, uLit;
 varying vec4 vWall;   // u podél stěny [m], v nad terénem [m], délka stěny, seed
 varying vec2 vInfo;   // typ budovy (0 dům, 1 hospodářská, 2 kůlna, 3 komín), výška okapu
-vec3 windowGlow(){
-  if (uNight < .01) return vec3(0.);
+// okno pod bodem fasády: x = sklo (1), y = rám (1), z = náhodné číslo okna, w = výška ve skle (0–1)
+vec4 windowAt(){
   int kind = int(vInfo.x + .5);
-  if (kind >= 2) return vec3(0.);
+  if (kind >= 2) return vec4(0.);
   float u = vWall.x, v = vWall.y, L = vWall.z, seed = vWall.w, eaveH = vInfo.y;
   float spacing = kind == 0 ? 3.1 : 4.;
   float ww = kind == 0 ? 1.0 : .8, wh = kind == 0 ? 1.25 : .6;
@@ -30,15 +30,54 @@ vec3 windowGlow(){
   float fl = kind == 0 ? floor((v - .3) / floorH) : 0.;
   float sill = kind == 0 ? .3 + fl * floorH + .95 : 2.1;
   float cy = v - sill - wh * .5;
-  if (idx < 0. || idx >= n || fl < 0. || fl >= nf || v > eaveH - .15) return vec3(0.);
-  if (abs(cx) > ww * .5 || abs(cy) > wh * .5) return vec3(0.);
+  if (idx < 0. || idx >= n || fl < 0. || fl >= nf || v > eaveH - .15) return vec4(0.);
   float r = hash12(vec2(idx + seed * 17., fl + seed * 3.));
+  float fx = abs(cx) - ww * .5, fy = abs(cy) - wh * .5;
+  if (fx > .08 || fy > .08) return vec4(0., 0., r, 0.);
+  if (fx > 0. || fy > 0.) return vec4(0., 1., r, 0.);
+  // příčle jako rám
+  if (abs(cx) < .03 || abs(cy - wh * .15) < .025) return vec4(0., 1., r, 0.);
+  return vec4(1., 0., r, cy / wh + .5);
+}
+// fasáda ve dne: tmavší sokl, okna se světlým rámem a sklem, které odráží oblohu
+vec3 facade(vec3 base){
+  int kind = int(vInfo.x + .5);
+  if (kind == 3) return base;
+  if (kind <= 1 && vWall.y < .55) base *= .8;
+  // zdálky (okno menší než pár pixelů) jen lehce ztmavená omítka, jinak moaré
+  float px = max(fwidth(vWall.x), fwidth(vWall.y));
+  float vis = 1. - smoothstep(.09, .3, px);
+  if (vis <= 0.) return base * (kind == 0 ? .93 : .97);
+  vec4 w = windowAt();
+  vec3 c = base;
+  if (w.y > .5) c = mix(base, vec3(.93, .92, .89), .85);
+  else if (w.x > .5) {
+    vec3 glass = mix(vec3(.05, .07, .09), vec3(.22, .29, .36), w.w * .8 + fract(w.z * 5.3) * .2);
+    c = mix(glass, glass * .4, uNight);
+  }
+  return mix(base * (kind == 0 ? .93 : .97), c, vis);
+}
+vec3 windowGlow(){
+  if (uNight < .01) return vec3(0.);
+  vec4 w = windowAt();
+  if (w.x < .5) return vec3(0.);
+  int kind = int(vInfo.x + .5);
   float frac = kind == 0 ? uLit : uLit * .25;
-  if (r > frac) return vec3(0.);
-  // teplé světlo, každé okno trochu jinak; příčle
-  vec3 c = mix(vec3(1., .72, .38), vec3(1., .85, .6), fract(r * 7.13));
-  if (abs(cx) < .03 || abs(cy - wh * .15) < .025) c *= .25;
-  return c * uNight * (1.1 + .6 * fract(r * 3.7));
+  if (w.z > frac) return vec3(0.);
+  vec3 c = mix(vec3(1., .72, .38), vec3(1., .85, .6), fract(w.z * 7.13));
+  return c * uNight * (1.1 + .6 * fract(w.z * 3.7));
+}
+`;
+// řady tašek na šikmých střechách (ploché střechy typ 5 bez nich)
+const ROOF_GLSL = /* glsl */ `
+varying vec3 vRoof;   // u podél okapu, v po spádu [m], typ krytiny
+vec3 roofCourses(vec3 c){
+  if (vRoof.z > 4.5) return c;
+  float t = fract(vRoof.y / .34);
+  float k = 1. - .13 * smoothstep(.78, .97, t);
+  float px = fwidth(vRoof.y);
+  k = mix(k, .97, smoothstep(.06, .2, px));       // zdálky jen jemně, ať to nezrní
+  return c * k;
 }
 `;
 
@@ -282,7 +321,7 @@ export function createBuildings({ buildings, world }) {
   // stylizované plné barvy: omítka z palety, střecha podle krytiny (z ortofota)
   const ROOF_COL = [0xc45c40, 0x8c5c46, 0x585c64, 0x969694, 0xc8ccce, 0x78766f].map((c) => new THREE.Color(c));
   const wm = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  // v noci svítí část oken (ve dne se okna nekreslí – stylizovaný vzhled)
+  // okna: ve dne sklo s rámem, v noci část svítí
   wm.onBeforeCompile = (sh) => {
     sh.uniforms.uNight = NIGHT.night;
     sh.uniforms.uLit = NIGHT.litFrac;
@@ -290,11 +329,22 @@ export function createBuildings({ buildings, world }) {
       vertHead: 'attribute vec4 aWall; attribute vec2 aInfo; varying vec4 vWall; varying vec2 vInfo;',
       vertBody: 'vWall = aWall; vInfo = aInfo;',
       fragHead: WINDOW_GLSL,
+      afterColor: 'diffuseColor.rgb = facade(diffuseColor.rgb);',
     });
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>',
       '#include <emissivemap_fragment>\n totalEmissiveRadiance += windowGlow();');
   };
   const rm = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  rm.onBeforeCompile = (sh) => {
+    patch(sh, {
+      vertHead: 'attribute vec3 aRoof; varying vec3 vRoof;',
+      vertBody: 'vRoof = aRoof;',
+      fragHead: ROOF_GLSL,
+      afterColor: 'diffuseColor.rgb = roofCourses(diffuseColor.rgb);',
+    });
+  };
+  rm.customProgramCacheKey = () => 'roof-courses';
+  wm.customProgramCacheKey = () => 'walls-windows';
 
   const group = new THREE.Group();
   for (const { W, R } of buckets.values()) {
@@ -313,6 +363,7 @@ export function createBuildings({ buildings, world }) {
     const rg = new THREE.BufferGeometry();
     rg.setAttribute('position', new THREE.Float32BufferAttribute(R.pos, 3));
     rg.setAttribute('color', new THREE.BufferAttribute(rc, 3));
+    rg.setAttribute('aRoof', new THREE.Float32BufferAttribute(R.roof, 3));
     for (const m of [new THREE.Mesh(wg, wm), new THREE.Mesh(rg, rm)]) {
       m.geometry.computeVertexNormals();
       m.castShadow = m.receiveShadow = true;

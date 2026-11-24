@@ -11,6 +11,7 @@ import { createLabels } from './js/labels.js';
 import { createReport } from './js/report.js';
 import { createSky, applySun, createTimeControls } from './js/sun.js';
 import { createLamps, updateLamps } from './js/lamps.js';
+import { createDrive } from './js/drive.js';
 
 // ------------------------------------------------------------------ renderer
 const canvas = document.getElementById('scene');
@@ -123,6 +124,12 @@ const look = new PointerLockControls(camera, canvas);
 const keys = new Set();
 let mode = 'orbit';
 
+// projížďka autem (režim „drive“)
+const drive = createDrive({
+  roads, bridges, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
+  onExit: () => setMode('orbit'),
+});
+
 // ------------------------------------------------------------------ plynulý přelet
 let anim = null;
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);   // rozjezd i dobrzdění
@@ -194,7 +201,24 @@ function flyTo(name, instant = false) {
 
 function setMode(next) {
   if (next === mode) return;
-  if (next === 'orbit') {
+  let fromCar = null;
+  if (mode === 'drive') fromCar = drive.stop();
+  if (next === 'drive') {
+    look.unlock();
+    orbit.enabled = false;
+    anim = null;
+    const dir = camera.getWorldDirection(new THREE.Vector3());
+    const at = mode === 'orbit' ? orbit.target : camera.position;
+    drive.start(at.x, at.z, Math.atan2(dir.z, dir.x));
+  } else if (next === 'orbit' && fromCar) {
+    // z auta na mapu: pohled shora šikmo na místo, kde auto stojí
+    orbit.target.set(fromCar.x, fromCar.y, fromCar.z);
+    const back = new THREE.Vector3(-Math.cos(fromCar.heading), 0, -Math.sin(fromCar.heading));
+    camera.position.set(fromCar.x, fromCar.y, fromCar.z).addScaledVector(back, 90).setY(fromCar.y + 70);
+    camera.lookAt(orbit.target);
+    orbit.enabled = true;
+    orbit.update();
+  } else if (next === 'orbit') {
     look.unlock();
     const dir = camera.getWorldDirection(new THREE.Vector3());
     const t = camera.position.clone().addScaledVector(dir, 120);
@@ -209,6 +233,7 @@ function setMode(next) {
     camera.lookAt(camera.position.clone().add(dir));
   }
   mode = next;
+  document.body.classList.toggle('driving', mode === 'drive');
   document.querySelectorAll('#modes [data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   document.querySelectorAll('#help [data-help]').forEach((d) => { d.hidden = d.dataset.help !== mode; });
   invalidate();
@@ -234,7 +259,7 @@ document.getElementById('shadows').addEventListener('change', (e) => {
   try { localStorage.setItem('stod3d.shadows', shadows ? '1' : '0'); } catch { /* ignorovat */ }
   applyShadows();
 });
-canvas.addEventListener('click', () => { if (mode !== 'orbit' && !look.isLocked) look.lock(); });
+canvas.addEventListener('click', () => { if ((mode === 'fly' || mode === 'walk') && !look.isLocked) look.lock(); });
 orbit.addEventListener('change', invalidate);
 orbit.addEventListener('start', () => { anim = null; });
 look.addEventListener('change', invalidate);
@@ -243,7 +268,9 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.code.startsWith('Arrow') || e.code === 'PageUp' || e.code === 'PageDown') e.preventDefault();
   if (e.repeat) return;
-  if (e.code === 'KeyO') setMode('orbit');
+  if (e.code === 'KeyO' || (e.code === 'Escape' && mode === 'drive')) setMode('orbit');
+  if (e.code === 'KeyV') setMode('drive');
+  if (mode === 'drive') return;                 // v autě jsou W/A/S/D a šipky pedály a volant
   if (e.code === 'KeyF') setMode('fly');
   if (e.code === 'KeyG') setMode('walk');
   if (e.code === 'KeyR') flyTo('Stod');
@@ -360,6 +387,7 @@ let lastWorldCheck = 0;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (anim) { stepAnim(); dirty = true; }
+  else if (mode === 'drive') { drive.update(dt, keys); dirty = true; }
   else if (mode === 'orbit') { if (keys.size) panByKeys(dt); if (orbit.update()) dirty = true; } else if (keys.size || dirty) updateFree(dt);
 
   const now = clock.elapsedTime;

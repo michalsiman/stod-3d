@@ -32,23 +32,35 @@ vec3 classColor(int cls){
 ${PALETTE_GLSL}
   return ${vec3(PALETTE[1])};
 }
+// Barva plochy s hladkými hranicemi: 3×3 pixely mapy pokryvu s váhami kvadratického B-splinu,
+// vyhrává plocha s největší vahou. Pole se rozlišují i podle stavu (zelený kanál), takže hranice
+// dvou sousedních polí je plynulá křivka a ne schody po pixelech.
+int landKey(vec4 t){
+  int r = int(t.r * 255. + .5);
+  return r == 2 ? 512 + int(t.g * 255. + .5) : r;
+}
 vec3 landColor(vec2 p){
   vec2 f = vec2(p.x - uRect.x, uRect.z - (p.y - uRect.y)) * (uRect.w / uRect.z) - .5;
-  ivec2 i0 = ivec2(floor(f));
-  vec2 fr = fract(f);
+  vec2 c = floor(f + .5);
+  vec2 d = f - c;
+  vec3 wx = vec3(.5 * (.5 - d.x) * (.5 - d.x), .75 - d.x * d.x, .5 * (.5 + d.x) * (.5 + d.x));
+  vec3 wy = vec3(.5 * (.5 - d.y) * (.5 - d.y), .75 - d.y * d.y, .5 * (.5 + d.y) * (.5 + d.y));
   int S = int(uRect.w) - 1;
-  vec4 t00 = texelFetch(uLC, clamp(i0, ivec2(0), ivec2(S)), 0);
-  vec4 t10 = texelFetch(uLC, clamp(i0 + ivec2(1, 0), ivec2(0), ivec2(S)), 0);
-  vec4 t01 = texelFetch(uLC, clamp(i0 + ivec2(0, 1), ivec2(0), ivec2(S)), 0);
-  vec4 t11 = texelFetch(uLC, clamp(i0 + ivec2(1, 1), ivec2(0), ivec2(S)), 0);
-  vec4 w = vec4((1. - fr.x) * (1. - fr.y), fr.x * (1. - fr.y), (1. - fr.x) * fr.y, fr.x * fr.y);
-  vec4 cl = vec4(t00.r, t10.r, t01.r, t11.r);
-  vec4 sc = vec4(dot(w, vec4(equal(cl, vec4(cl.x)))), dot(w, vec4(equal(cl, vec4(cl.y)))),
-                 dot(w, vec4(equal(cl, vec4(cl.z)))), dot(w, vec4(equal(cl, vec4(cl.w)))));
-  vec4 t = t00; float best = sc.x;
-  if (sc.y > best) { best = sc.y; t = t10; }
-  if (sc.z > best) { best = sc.z; t = t01; }
-  if (sc.w > best) { t = t11; }
+  ivec2 ic = ivec2(c);
+  vec4 tx[9]; int k[9]; float w[9];
+  for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++) {
+    int n = j * 3 + i;
+    tx[n] = texelFetch(uLC, clamp(ic + ivec2(i - 1, j - 1), ivec2(0), ivec2(S)), 0);
+    k[n] = landKey(tx[n]);
+    w[n] = wx[i] * wy[j];
+  }
+  int best = 4; float bestScore = -1.;
+  for (int a = 0; a < 9; a++) {
+    float sc = 0.;
+    for (int b = 0; b < 9; b++) sc += k[b] == k[a] ? w[b] : 0.;
+    if (sc > bestScore + 1e-4) { bestScore = sc; best = a; }
+  }
+  vec4 t = tx[best];
   int cls = int(t.r * 255. + .5);
   if (cls == 2) {
     int g = int(t.g * 255. + .5);
@@ -77,7 +89,7 @@ export function createTerrainMaterials({ farTex, meta }) {
         afterColor: 'diffuseColor.rgb = landColor(vWPos.xz);',
       });
     };
-    mat.customProgramCacheKey = () => 'terrain-near-flat';
+    mat.customProgramCacheKey = () => 'terrain-near-smooth';
     return mat;
   }
   return { far, near };

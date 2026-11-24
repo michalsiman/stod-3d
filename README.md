@@ -26,6 +26,7 @@ web/
   js/trees.js       stylizované stromy po blocích 256 m
   js/fences.js      zdi a živé ploty
   js/power.js       elektrické vedení – sloupy a vodiče
+  js/drive.js       projížďka autem: model auta, jízda po silnicích, srážky s domy, mapka, cíle jízdy
   js/glsl.js        sdílené GLSL funkce
   data/             meta.json, far.png, far_h.bin, t/{i}_{j}.bin|png, buildings/roads/fences/power/bridges.json, trees.bin
 ```
@@ -113,6 +114,11 @@ server {
 - **Mapa** (O) – myš / dotyk; klávesy ←↑↓→ nebo WASD posun, Q/E nebo Shift+←/→ otáčení, Shift+↑/↓ náklon, +/− nebo PgUp/PgDn zoom
 - **Let** (F) – volný let, myš + WASD, E/Q nahoru/dolů, Shift rychle
 - **Chůze** (G) – pohyb ve výšce očí nad terénem
+- **Auto** (V) – projížďka autem po silnicích a cestách: ↑/W plyn, ↓/S brzda a couvání, ←/→ zatáčení,
+  mezerník ruční brzda, C pohled (za autem / zdálky / z kabiny), P barva auta, M zvuk motoru, T nový cíl,
+  Esc vystoupit. Nejrychleji to jede po silnici, štěrk, polní cesty a louky zpomalí, do domů se narazit dá.
+  Tachometr ukazuje ulici a povrch, mapka vpravo nahoře je natočená po směru jízdy; tlačítko 🎯 vybere
+  náhodnou zajímavost v okolí jako cíl a změří čas. V noci svítí reflektory. Na mobilu dotykové pedály.
 - **Stod / Lelov** – skok na obec (R = Stod)
 - Aktuální pohled se ukládá do URL (`#x,y,z,…`) a dá se poslat odkazem.
 

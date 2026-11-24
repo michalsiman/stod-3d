@@ -121,6 +121,13 @@
 
   <article class="panel" id="poi-info" hidden></article>
 
+  <nav class="panel" id="modes" aria-label="Režim prohlížení">
+    <button data-mode="orbit" class="active" title="Mapa (O)">Mapa</button>
+    <button data-mode="fly" title="Volný let (F)">Let</button>
+    <button data-mode="walk" title="Chůze (G)">Chůze</button>
+    <button data-mode="drive" title="Projížďka autem (V)">🚗 Auto</button>
+  </nav>
+
   <button id="help-toggle" class="panel" title="Ovládání mapy" aria-expanded="false" aria-controls="help">?</button>
   <aside class="panel" id="help" hidden>
     <button class="help-close" title="Zabalit">×</button>
@@ -129,13 +136,19 @@
       Klávesy: <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> posun,
       <kbd>Q</kbd>/<kbd>E</kbd> nebo <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> otáčení,
       <kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> náklon, <kbd>+</kbd>/<kbd>−</kbd> přiblížení.<br>
-      <kbd>F</kbd> volný let, <kbd>G</kbd> chůze, <kbd>O</kbd> zpět na mapu, <kbd>R</kbd> na Stod.
+      <kbd>F</kbd> volný let, <kbd>G</kbd> chůze, <kbd>V</kbd> auto, <kbd>O</kbd> zpět na mapu, <kbd>R</kbd> na Stod.
       Na mobilu jedním prstem otáčíte, dvěma posouváte a přibližujete.
     </div>
     <div data-help="fly" hidden>
       <b>Let</b> · klikněte do scény, myší se rozhlížíte.
       <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> pohyb,
       <kbd>E</kbd>/<kbd>Q</kbd> nahoru/dolů, <kbd>Shift</kbd> rychle, <kbd>Esc</kbd> uvolní myš.
+    </div>
+    <div data-help="drive" hidden>
+      <b>Auto</b> · <kbd>↑</kbd>/<kbd>W</kbd> plyn, <kbd>↓</kbd>/<kbd>S</kbd> brzda a couvání,
+      <kbd>←</kbd><kbd>→</kbd> / <kbd>A</kbd><kbd>D</kbd> zatáčení, <kbd>mezerník</kbd> ruční brzda.
+      <kbd>C</kbd> pohled, <kbd>P</kbd> barva auta, <kbd>M</kbd> zvuk, <kbd>Esc</kbd> vystoupit.
+      Po silnici to jede nejrychleji, polní cesty a louky zpomalí; do domů se narazit dá.
     </div>
     <div data-help="walk" hidden>
       <b>Chůze</b> · jako let, ale držíte se ve výšce očí nad terénem.
