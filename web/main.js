@@ -129,6 +129,7 @@ const drive = createDrive({
   roads, bridges, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
   onExit: () => setMode('orbit'),
 });
+window.stod3d = { drive, world, camera };      // pro ladění v konzoli
 
 // ------------------------------------------------------------------ plynulý přelet
 let anim = null;

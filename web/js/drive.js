@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NIGHT } from './night.js';
 
 // Projížďka autem: arkádová jízda po silnicích a cestách Stodska.
@@ -109,8 +110,30 @@ function extrude(sh, width, bevel, mat) {
   return m;
 }
 
+/** Sloučí potomky skupiny podle materiálu do jedné sítě na materiál (méně volání kreslení). */
+function mergeByMaterial(group) {
+  const byMat = new Map();
+  group.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const keep = [];
+  for (const o of [...group.children]) {
+    if (!o.isMesh) { keep.push(o); continue; }
+    let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const name of Object.keys(g.attributes)) if (!['position', 'normal'].includes(name)) g.deleteAttribute(name);
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(g);
+    group.remove(o);
+  }
+  for (const [mat, list] of byMat) {
+    const m = new THREE.Mesh(mergeGeometries(list), mat);
+    m.castShadow = true;
+    group.add(m);
+  }
+}
+
 /** Nízkopolygonové auto (x dopředu, y nahoru, délka 4,4 m): karoserie, prosklená kabina, střecha, kola, světla. */
-export function createCarModel(paint = PAINTS[0]) {
+export function createCarModel(paint = PAINTS[0], { lights = true } = {}) {
   const car = new THREE.Group();
   const body = new THREE.Group();
   car.add(body);
@@ -181,6 +204,7 @@ export function createCarModel(paint = PAINTS[0]) {
     tire.castShadow = true;
     spin.add(tire, new THREE.Mesh(rimG, chrome));
     for (let k = 0; k < 3; k++) { const s = new THREE.Mesh(hubG, chrome); s.rotation.z = (k * Math.PI) / 3; spin.add(s); }
+    mergeByMaterial(spin);
     pivot.add(spin);
     car.add(pivot);
     const arch = new THREE.Mesh(archG, dark);
@@ -189,9 +213,10 @@ export function createCarModel(paint = PAINTS[0]) {
     wheels.push({ pivot, spin, front: x > 0 });
   }
 
-  // reflektory do noci
+  mergeByMaterial(body);
+  // reflektory do noci (jen naše auto – světla stojí výkon)
   const beams = [];
-  for (const z of [0.55, -0.55]) {
+  for (const z of lights ? [0.55, -0.55] : []) {
     const sp = new THREE.SpotLight(0xfff1d6, 0, 70, 0.45, 0.6, 1.2);
     sp.position.set(2.2, 0.76, z);
     sp.target.position.set(12, -0.6, z * 3);
@@ -380,6 +405,12 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
       }
       mctx.stroke();
     }
+    mctx.fillStyle = '#9ad1ff';
+    for (const bot of bots) {
+      if (!bot.line) continue;
+      const [bx, by] = tx(bot.x, bot.z);
+      mctx.beginPath(); mctx.arc(bx, by, 8, 0, Math.PI * 2); mctx.fill();
+    }
     if (goal) {
       let [gx, gy] = tx(goal.x, goal.z);
       const dx = gx - c, dy = gy - c, d = Math.hypot(dx, dy);
@@ -405,6 +436,78 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     mctx.fillStyle = '#fff'; mctx.font = 'bold 22px system-ui, sans-serif'; mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
     mctx.fillText('S', c + Math.cos(na) * (c - 16), c + Math.sin(na) * (c - 16));
   }
+
+  // ---------------------------------------------------------------- provoz: auta na silnicích a ulicích v okolí
+  const TRAFFIC = matchMedia('(pointer: coarse)').matches ? 6 : 12;
+  const trafficLines = lines.filter((l) => l.t <= 2).map((l) => {
+    const cum = [0];
+    for (let i = 1; i < l.p.length; i++) cum.push(cum[i - 1] + Math.hypot(l.p[i][0] - l.p[i - 1][0], l.p[i][1] - l.p[i - 1][1]));
+    return { ...l, cum, L: cum[cum.length - 1] };
+  }).filter((l) => l.L > 80);
+  const bots = [];
+  for (let i = 0; i < TRAFFIC; i++) {
+    const m = createCarModel(PAINTS[(i * 3 + 1) % PAINTS.length], { lights: false });
+    m.car.visible = false;
+    scene.add(m.car);
+    bots.push({ m, line: null, s: 0, dir: 1, v: 0, vMax: 0, heading: 0, x: 0, z: 0, y: 0 });
+  }
+  function pointOn(l, s) {
+    let i = 1;
+    while (i < l.cum.length - 1 && l.cum[i] < s) i++;
+    const a = l.p[i - 1], b = l.p[i], seg = l.cum[i] - l.cum[i - 1] || 1, t = (s - l.cum[i - 1]) / seg;
+    return { x: a[0] + (b[0] - a[0]) * t, z: a[1] + (b[1] - a[1]) * t, dir: Math.atan2(b[1] - a[1], b[0] - a[0]) };
+  }
+  function spawn(bot, far) {
+    for (let tries = 0; tries < 40; tries++) {
+      const l = trafficLines[Math.floor(Math.random() * trafficLines.length)];
+      const s0 = Math.random() * l.L;
+      const p = pointOn(l, s0);
+      const d = Math.hypot(p.x - st.x, p.z - st.z);
+      if (d > 700 || d < (far ? 160 : 25)) continue;
+      Object.assign(bot, { line: l, s: s0, dir: Math.random() < 0.5 ? 1 : -1, v: 0,
+        vMax: [17, 14, 10][l.t] * (0.75 + Math.random() * 0.35) });
+      bot.m.car.visible = true;
+      return true;
+    }
+    bot.line = null;
+    bot.m.car.visible = false;
+    return false;
+  }
+  function updateTraffic(dt) {
+    const night = NIGHT.night.value;
+    for (const bot of bots) {
+      if (!bot.line || Math.hypot(bot.x - st.x, bot.z - st.z) > 900) { if (!spawn(bot, !!bot.line)) continue; }
+      const l = bot.line;
+      // zpomalit za naším autem nebo před ním
+      const ahead = pointOn(l, THREE.MathUtils.clamp(bot.s + bot.dir * 9, 0, l.L));
+      const blocked = Math.hypot(ahead.x - st.x, ahead.z - st.z) < 5;
+      const want = blocked ? 0 : bot.vMax;
+      bot.v += THREE.MathUtils.clamp(want - bot.v, -9 * dt, 3 * dt);
+      bot.s += bot.dir * bot.v * dt;
+      if (bot.s <= 0 || bot.s >= l.L) { bot.dir = -bot.dir; bot.s = THREE.MathUtils.clamp(bot.s, 0, l.L); }   // na konci otočí
+      const p = pointOn(l, bot.s);
+      const h = bot.dir > 0 ? p.dir : p.dir + Math.PI;
+      const lane = Math.min(1.6, l.w / 4);
+      bot.x = p.x - Math.sin(h) * lane;
+      bot.z = p.z + Math.cos(h) * lane;
+      const dh = Math.atan2(Math.sin(h - bot.heading), Math.cos(h - bot.heading));
+      bot.heading += dh * Math.min(1, dt * 6);
+      const y = surfaceAt(bot.x, bot.z).y;
+      bot.y += (y - bot.y) * (bot.m.car.visible && Math.abs(y - bot.y) < 5 ? Math.min(1, dt * 10) : 1);
+      const car = bot.m.car;
+      car.position.set(bot.x, bot.y, bot.z);
+      car.rotation.set(0, -bot.heading, 0);
+      for (const w of bot.m.wheels) w.spin.rotation.z -= (bot.v * dt) / 0.35;
+      bot.m.head.emissiveIntensity = 0.3 + night * 2.2;
+      bot.m.tail.emissiveIntensity = (bot.v < want - 1 ? 1.4 : 0.35) + night * 0.8;
+      // ťuknutí do našeho auta
+      if (Math.hypot(bot.x - st.x, bot.z - st.z) < 3.2 && Math.abs(st.v) > 1.5) {
+        st.v = -st.v * 0.3;
+        flash('Ťuk! Pozor na ostatní auta');
+      }
+    }
+  }
+  function hideTraffic() { for (const bot of bots) { bot.line = null; bot.m.car.visible = false; } }
 
   function bridgeY(x, z) {
     const n = nearestSeg(bridgeGrid, x, z);
@@ -454,6 +557,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   function stop() {
     st.active = false;
     model.car.visible = false;
+    hideTraffic();
     hud.hidden = true;
     mapEl.hidden = true;
     goalEl.hidden = true;
@@ -562,6 +666,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     model.tail.emissiveIntensity = (brake ? 1.6 : 0.35) + night * 0.8;
 
     placeCamera(false, dt);
+    updateTraffic(dt);
     updateGoal();
     mapT -= dt;
     if (mapT <= 0) { mapT = 0.08; drawMap(); }
@@ -585,5 +690,5 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     return true;
   }
 
-  return { start, stop, update, get active() { return st.active; }, state: st };
+  return { start, stop, update, get active() { return st.active; }, state: st, bots };
 }

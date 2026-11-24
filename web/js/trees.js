@@ -10,21 +10,50 @@ function rand(seed) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
 }
 
-function deciduousGeo() {
-  const g = new THREE.IcosahedronGeometry(1, 0);
-  g.deleteAttribute('uv');
+// tónování koruny: zespodu tmavší, nahoře světlejší (vertex color × barva instance)
+function shade(g, lo = 0.72, hi = 1.12) {
+  const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
+  g.computeBoundingBox();
+  const { min, max } = g.boundingBox;
+  for (let i = 0; i < pos.count; i++) {
+    const t = (pos.getY(i) - min.y) / (max.y - min.y || 1);
+    const k = lo + (hi - lo) * t;
+    col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = k;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return g;
 }
 
-function coniferGeo() {
-  const parts = [[1.0, 0.0, 0.62], [0.7, 0.42, 1.0]].map(([r, y0, y1]) => {
-    const g = new THREE.ConeGeometry(r, y1 - y0, 6, 1).translate(0, (y0 + y1) / 2, 0).toNonIndexed();
+function deciduousGeo() {
+  // koruna ze dvou „chuchvalců“ s mírně rozházenými vrcholy (40 trojúhelníků)
+  const r = rand(11);
+  const parts = [[1, 0, -0.08, 0], [0.68, 0.32, 0.42, -0.18]].map(([rad, x, y, z]) => {
+    const g = new THREE.IcosahedronGeometry(rad, 0);
+    const p = g.attributes.position;
+    const jit = new Map();
+    for (let i = 0; i < p.count; i++) {
+      const key = `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`;
+      if (!jit.has(key)) jit.set(key, 0.88 + r() * 0.24);
+      const k = jit.get(key);
+      p.setXYZ(i, p.getX(i) * k + x, p.getY(i) * k * 0.92 + y, p.getZ(i) * k + z);
+    }
     g.deleteAttribute('uv');
     return g;
   });
   const g = mergeGeometries(parts);
   g.computeVertexNormals();
-  return g;
+  return shade(g);
+}
+
+function coniferGeo() {
+  const parts = [[1.0, 0.0, 0.5], [0.78, 0.3, 0.78], [0.52, 0.58, 1.0]].map(([r, y0, y1]) => {
+    const g = new THREE.ConeGeometry(r, y1 - y0, 7, 1).translate(0, (y0 + y1) / 2, 0).toNonIndexed();
+    g.deleteAttribute('uv');
+    return g;
+  });
+  const g = mergeGeometries(parts);
+  g.computeVertexNormals();
+  return shade(g, 0.7, 1.08);
 }
 
 export function createTrees({ buf, meta, world }) {
@@ -32,7 +61,7 @@ export function createTrees({ buf, meta, world }) {
   const W = meta.width, H = meta.height, C = meta.chunk, ncx = W / C;
   const starts = meta.tree_chunks;
 
-  const mat = new THREE.MeshLambertMaterial({ flatShading: true });
+  const mat = new THREE.MeshLambertMaterial({ flatShading: true, vertexColors: true });
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x7a5c44 });
   const decGeo = deciduousGeo(), conGeo = coniferGeo();
   const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1, 4, 1).translate(0, 0.5, 0);

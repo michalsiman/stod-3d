@@ -118,7 +118,8 @@ server {
   mezerník ruční brzda, C pohled (za autem / zdálky / z kabiny), P barva auta, M zvuk motoru, T nový cíl,
   Esc vystoupit. Nejrychleji to jede po silnici, štěrk, polní cesty a louky zpomalí, do domů se narazit dá.
   Tachometr ukazuje ulici a povrch, mapka vpravo nahoře je natočená po směru jízdy; tlačítko 🎯 vybere
-  náhodnou zajímavost v okolí jako cíl a změří čas. V noci svítí reflektory. Na mobilu dotykové pedály.
+  náhodnou zajímavost v okolí jako cíl a změří čas. Po silnicích a ulicích v okolí jezdí další auta (na mapce modré
+  tečky). V noci svítí reflektory. Na mobilu dotykové pedály.
 - **Stod / Lelov** – skok na obec (R = Stod)
 - Aktuální pohled se ukládá do URL (`#x,y,z,…`) a dá se poslat odkazem.
 
