@@ -247,6 +247,34 @@ export const FACADES = [
   // kulturní dům: béžový, kamenný obklad přízemí, červená taška; vyšší část se třemi podlažími
   { name: 'Kulturní dům', at: [-769, -1228], wall: 0xd9d1be, roof: 0xb9452f, plinth: 0xd9d1be, plinthH: 0.4, eave: 6.6, ridge: 10.2 },
   { name: 'Kulturní dům – vyšší část', at: [-788, -1207], wall: 0xd9d1be, roof: 0xb9452f, plinth: 0x8a6e52, plinthH: 3.0, eave: 9.0, ridge: 13.2, shape: 'hip' },
+  // ---- Stod – domy s adresou na fotografiích
+  { name: 'Komenského nám. 19', at: [-185.3, -984.1], wall: 0xd8e6d2, roof: 0x5a5754, plinth: 0xc4cfc0, plinthH: 0.8 },
+  { name: 'Sokolská 433', at: [-542.5, -1266.5], wall: 0xf0e6c6, roof: 0xb24a30, plinth: 0xb8b0a0, plinthH: 0.9 },
+  { name: 'nám. ČSA 69', at: [-260.0, -1043.9], wall: 0xf2f0ea, roof: 0x8a3e2c, plinth: 0xb9b6ae, plinthH: 0.5 },
+  { name: 'nám. ČSA 70', at: [-245.2, -1022.9], wall: 0xe8c2b8, roof: 0x5c4a42, plinth: 0xc9a59a, plinthH: 0.9 },
+  { name: 'nám. ČSA 71', at: [-237.1, -1006.0], wall: 0xd77d52, roof: 0x5c4a42, plinth: 0xb56440, plinthH: 0.9 },
+  // Stará pošta (Suvorovův dům): bílá s okrovými barokními štíty, hnědočervená taška
+  { name: 'Stará pošta', at: [-115.3, -993.8], wall: 0xf3eedc, roof: 0xa04a32, plinth: 0xe7c35a, plinthH: 0.6 },
+  // Hammerschmiedův dům: oprýskaná béžová omítka, červenohnědá taška
+  { name: 'Hammerschmiedův dům', at: [-18.0, -900.8], wall: 0xd9caa0, roof: 0x9e4630, plinth: 0xb7a880, plinthH: 0.8 },
+  // lékárna Devětsil, Dělnická: krémová, přízemí obložené cihlou
+  { name: 'Lékárna Devětsil', at: [-406.9, -1139.7], wall: 0xefe6d3, roof: 0x6b4a3c, plinth: 0xb0553a, plinthH: 1.2 },
+  // úřad práce, Sokolská 566: bílá patra, přízemí z cihel
+  { name: 'Úřad práce', at: [-611.4, -1241.3], wall: 0xf2f1ee, roof: 0x6f6d6a, plinth: 0xa0583e, plinthH: 3.0 },
+  // sportovní hala: šedobílé panely, pás oken, nízká střecha
+  { name: 'Sportovní hala', at: [-696.9, -992.6], wall: 0xd9dbdc, roof: 0x8d9094, plinth: 0x8f9396, plinthH: 0.6 },
+  // ---- Chotěšov – domy s adresou na fotografiích
+  { name: 'Osvobozených politických vězňů 476', at: [3139.7, -2412.7], wall: 0xf3e8e8, roof: 0xa83a2a, plinth: 0xd8c4c4, plinthH: 0.6 },
+  { name: 'Plzeňská 190', at: [2564.1, -2601.9], wall: 0xe8d49a, roof: 0xb24a32, plinth: 0xc9b07a, plinthH: 0.9 },
+  { name: 'Plzeňská 244', at: [2667.9, -2801.4], wall: 0xf0cf4a, roof: 0x8e3e2e, plinth: 0xb89a3a, plinthH: 0.6 },
+  { name: 'Úzká 19', at: [2583.1, -2324.5], wall: 0xe8e2d4, roof: 0x5d4c44, plinth: 0xc9c2b2, plinthH: 0.6 },
+  { name: 'Dům čp. 28', at: [2642.6, -2305.8], wall: 0xd9c49a, roof: 0x6b4a3a, plinth: 0xb39f78, plinthH: 0.6 },
+  { name: 'Mantov čp. 40', at: [3160.1, -854.9], wall: 0xcdbb94, roof: 0x6b4a3a, plinth: 0xa89874, plinthH: 0.6 },
+  // ---- Střelice, Hradec, Lelov
+  { name: 'Střelice čp. 7', at: [-2558.6, -439.7], wall: 0xeea040, roof: 0xa04030, plinth: 0x6e4a36, plinthH: 0.6 },
+  { name: 'Fara v Hradci', at: [-3413.1, -1171.7], wall: 0xd9c27a, roof: 0x6e4a3a, plinth: 0xb6a064, plinthH: 0.7 },
+  { name: 'Lelov – hospoda', at: [-580.5, 1199.4], wall: 0xf1ead6, roof: 0x4f4a48, plinth: 0x7a5a44, plinthH: 0.7 },
+  { name: 'Lelov – dům', at: [-290.9, 1091.0], wall: 0xe2c35a, roof: 0x8a4a36, plinth: 0xb39a4a, plinthH: 0.6 },
   // ---- Chotěšov
   // obecní úřad: velká krémová budova se štítem s hodinami, červená taška, tři podlaží
   { name: 'Obecní úřad Chotěšov', at: [2442.4, -2349.5], wall: 0xe6dcc0, roof: 0xb8452f, plinth: 0xcfc4a6, plinthH: 0.9, ridge: 16.0, shape: 'hip' },
