@@ -15,7 +15,7 @@ import { createLamps, updateLamps } from './js/lamps.js';
 import { createDrive } from './js/drive.js';
 import { createPosts } from './js/posts.js';
 import { createSigns } from './js/signs.js';
-import { createLandmarks, createRoundabouts, EXTRA_BRIDGES } from './js/landmarks.js';
+import { createLandmarks, createRoundabouts, EXTRA_BRIDGES, EXTRA_FENCES } from './js/landmarks.js';
 import { createPlaceSigns } from './js/placesigns.js';
 import { createTraffic } from './js/traffic.js';
 import { createLife } from './js/life.js';
@@ -115,7 +115,7 @@ const world = new World({ meta, farH: new Uint16Array(farH), farTex, scene, onCh
 const landmarks = createLandmarks({ buildings });
 scene.add(landmarks.group);
 const trees = createTrees({ buf: treesBuf, meta, world, exclude: landmarks.keepOut });
-const fenceLayer = createFences({ fences, world });
+const fenceLayer = createFences({ fences: [...fences, ...EXTRA_FENCES], world });
 const bridgeInfo = prepareBridges([...bridges, ...EXTRA_BRIDGES], roads, world);
 // cyklostezky (OSM) – vlastní pás v červenohnědém asfaltu
 if (bike?.paths?.length) world.builders.push(createRoads({ roads: bike.paths.map((p) => ({ t: 9, p })), bridges: bridgeInfo, world }));

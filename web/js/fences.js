@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { patch } from './glsl.js';
 
-// Typy: 0 dřevěné laťky, 1 pletivo, 2 kovové tyče, 3 živý plot, 4 zeď (ZABAGED)
-const HEIGHT = [1.2, 1.5, 1.4, 1.6, 1.8];
+// Typy: 0 dřevěné laťky, 1 pletivo, 2 kovové tyče, 3 živý plot, 4 zeď (ZABAGED),
+//       5 vysoké pletivo areálu (2 m, betonová podezdívka, sloupky po 2,5 m)
+const HEIGHT = [1.2, 1.5, 1.4, 1.6, 1.8, 2.0];
 const THICK = { 3: 0.7, 4: 0.4 };
 const SHOW_D = 380;
 const C = 256;
@@ -23,11 +24,15 @@ void fence(inout vec3 c){
     float k = aa(.14, px);
     fAlpha = max(max(rail, post), mix(step(v, 1.14), lat * step(v, top), step(.5, k)));
     c = hexc(120, 92, 62) * (.8 + .3 * hash11(floor(u / .14))) * mix(.8, 1., k);
-  } else if (t == 1) {                       // pletivo
+  } else if (t == 1 || t == 5) {             // pletivo (5 = vysoké, na podezdívce, nahoře napínací drát)
+    float tall = float(t == 5);
+    float base = .22 * tall, top = mix(1.44, 1.94, tall);
     vec2 q = vec2(u + v, u - v) / .06;
     float wire = 1. - step(.1, min(abs(fract(q.x) - .5), abs(fract(q.y) - .5)));
-    fAlpha = max(max(post, step(1.44, v)), wire * step(.05, v) * step(.5, aa(.06, px)));
+    float strand = tall * (step(abs(v - 1.05), .015) + step(abs(v - .45), .015));
+    fAlpha = max(max(max(post, step(top, v)), strand), max(wire * step(.05, v) * step(.5, aa(.06, px)), step(v, base)));
     c = post > .5 ? hexc(60, 80, 60) : hexc(70, 96, 66);
+    if (v < base) c = hexc(168, 164, 156);
   } else {                                   // kovové tyče
     float bar = step(abs(fract(u / .13) - .5) * .13, .012);
     float rail = step(abs(v - .15), .03) + step(abs(v - 1.3), .03);
@@ -79,7 +84,7 @@ export function createFences({ fences, world }) {
         const x2 = a[0] + (b[0] - a[0]) * (q + 1) / n, z2 = a[1] + (b[1] - a[1]) * (q + 1) / n;
         const y1 = world.heightAt(x1, z1), y2 = world.heightAt(x2, z2);
         const u1 = L * q / n + fi * 0.37, u2 = L * (q + 1) / n + fi * 0.37;
-        if (t <= 2) {
+        if (t <= 2 || t === 5) {
           tp.push(x1, y1 - 0.1, z1, x2, y2 - 0.1, z2, x2, y2 + h, z2, x1, y1 - 0.1, z1, x2, y2 + h, z2, x1, y1 + h, z1);
           ta.push(u1, -0.1, t, u2, -0.1, t, u2, h, t, u1, -0.1, t, u2, h, t, u1, h, t);
         } else {
