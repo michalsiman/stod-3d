@@ -10,11 +10,11 @@ import { NIGHT } from './night.js';
 // typy komunikací – stejné jako v roads.js (tools/build_data.py ROAD)
 const WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2, 3.0, 2.6, 1.2, 4.2];
 const LIFT = [0.34, 0.34, 0.34, 0.34, 0.31, 0.3, 0.29, 0.28, 0.36];
-const MAX_SPEED = [30, 25, 16, 16, 13, 11, 9, 5, 0];            // [m/s] na daném povrchu (železnice = mimo cestu)
+const MAX_SPEED = [46, 38, 26, 25, 21, 17, 13, 8, 0];            // [m/s] na daném povrchu (železnice = mimo cestu)
 const GRIP = [1, 1, 1, 1, 0.95, 0.8, 0.72, 0.7, 0.6];
 const SURFACE_NAME = ['silnice I. třídy', 'silnice', 'ulice', 'asfaltová cesta', 'panelová cesta', 'štěrková cesta',
   'polní cesta', 'pěšina', 'železnice'];
-const OFFROAD = { max: 7, grip: 0.6, rolling: 1.6 };
+const OFFROAD = { max: 11, grip: 0.6, rolling: 1.6 };
 const CELL = 32;
 const WHEELBASE = 2.6;
 
@@ -661,7 +661,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     v -= Math.sign(v) * Math.min(Math.abs(v), (rolling + 0.0016 * v * v) * dt);
     v -= 9.81 * Math.sin(st.pitch) * dt * 0.6;
     if (v > maxV) v -= (v - maxV) * 2 * dt;
-    v = THREE.MathUtils.clamp(v, -6, 34);
+    v = THREE.MathUtils.clamp(v, -8, 50);
     if (!gas && !brake && Math.abs(v) < 0.05) v = 0;
 
     // řízení: menší rejd ve vyšší rychlosti
