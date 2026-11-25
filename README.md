@@ -121,6 +121,12 @@ Ukládání potřebuje serverovou část – dvě varianty se stejným API (`GET
 - `web/api/reports.php` – pro běžný webhosting s PHP (Apache + `web/api/.htaccess`); data v `web/api/data/`
   (zvenku nepřístupné; složka musí být zapisovatelná pro PHP).
 
+## Nasazení
+
+`python3 tools/deploy.py [cíl]` – rsync `web/` na server (výchozí `bludit:/var/www/ok1sim.cz/public_html/stod-3d/`,
+tj. https://ok1sim.cz/stod-3d/). Adresy skriptů a dat dostanou `?v=<commit>-<čas>`, protože Cloudflare nastavuje
+prohlížečům cache na hodiny; `api/data/reports.json` (hlášení uživatelů) se nepřepisuje.
+
 ## Samostatný spustitelný soubor
 
 `tools/build_exe.sh` sestaví do `dist/` jeden soubor pro každý systém (Windows, Linux, Mac Intel/ARM),
