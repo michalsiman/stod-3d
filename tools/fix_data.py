@@ -30,6 +30,7 @@ ROAD_TYPES = [
     (2707.6, -2377.0, 3, "Chotěšov, úzká ulička"),
     (2588.2, -2235.9, 3, "Chotěšov, úzká ulička u kláštera"),
     (2562.6, -2345.5, 3, "Chotěšov, úzká ulička"),
+    (-761.0, -1153.0, 3, "Stod, cesta parkem pod nádražím (u Tyršovy) – jen pro pěší a kola"),
 ]
 
 # úseky bez aut (jen pěší a kola): (x, z středu úseku, důvod) → "nc": 1, doprava je vynechá
@@ -38,6 +39,7 @@ NO_CARS = [
     (-229.5, -1232.0, "Stod, chodníček od kruhového objezdu k parkovišti u Stříbrské"),
     (169.0, -1675.0, "Stod, Háj umučených – příjezd, zákaz vjezdu (pietní místo)"),
     (207.0, -1700.0, "Stod, Háj umučených – cesta hájem, zákaz vjezdu (pietní místo)"),
+    (-765.0, -1156.0, "Stod, cesta parkem pod nádražím – auta tu nejezdí"),
 ]
 
 def terrain():

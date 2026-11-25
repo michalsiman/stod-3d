@@ -10,7 +10,7 @@ export const SIDEWALK_TOP = LIFT + CURB;
 const TYPES = new Set([0, 1, 2, 3]);
 const STEP = 2.5;
 
-export function createSidewalks({ roads, buildings, bridges, world }) {
+export function createSidewalks({ roads, buildings, bridges, world, blocked = null }) {
   const T = world.T, W = world.W, H = world.H;
   // zástavba: buňky 50 m s počtem domů
   const homes = new Map();
@@ -132,6 +132,7 @@ export function createSidewalks({ roads, buildings, bridges, world }) {
         // na mostě jen tam, kde má most vlastní chodník (jinak by visel vedle zábradlí)
         if (onBridge(x, z)) return false;       // most má vlastní chodník / zábradlí; chodník končí u mostu
         if (inBuilding(mx, mz)) return false;
+        if (blocked && blocked(mx, mz)) return false;      // místo chodníku stání (taxíky u Sokolské)
         return !nearOther(mx, mz, id, 0.4, segOf[i]);
       });
       for (let i = 0; i < n - 1; i++) {

@@ -210,6 +210,7 @@ function coach() {
 export const VEHICLES = {
   car: car(), hatch: car({ len: 4.0, hatch: true, wb: 2.5 }), suv: car({ len: 4.6, h: 1.7, w: 1.88, wb: 2.75 }),
   combi: car({ len: 4.7, hatch: true, wb: 2.7 }),
+  mpv: car({ len: 4.6, h: 1.68, w: 1.86, wb: 2.8, hatch: true }),   // velké MPV (taxíky, Scénic)
   van: van(), truck: truck(), semi: semiTractor(), trailer: semiTrailer(), bus: bus(), tractor: tractor(), wagon: wagon(),
   unit: unitCar(), loco: loco(), coach: coach(),
 };
