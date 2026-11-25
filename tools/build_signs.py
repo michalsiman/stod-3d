@@ -29,7 +29,7 @@ SIGNS = [
     # ---- Stod – úřady a veřejné budovy
     ("MĚSTSKÝ ÚŘAD", "urad", {"at": [-222, -1070]}),
     ("STODSKÁ NEMOCNICE", "zdravi", {"at": [-941, -814]}),
-    ("POŠTA", "posta", {"at": [-315, -1307]}),
+    ("ČESKÁ POŠTA", "posta", {"at": [-315, -1307]}),
     ("ZÁKLADNÍ ŠKOLA", "skola", {"at": [-125, -1026]}),
     ("ZÁKLADNÍ UMĚLECKÁ ŠKOLA", "skola", {"at": [-447, -1150]}),
     ("STŘEDNÍ ODBORNÉ UČILIŠTĚ", "skola", {"at": [-102, -1367]}),
@@ -62,7 +62,7 @@ SIGNS = [
     ("WIENERBERGER", "firma", {"addr": "Stříbrská 369, Stod"}),
     # ---- Chotěšov
     ("OBECNÍ ÚŘAD CHOTĚŠOV", "urad", {"at": [2440, -2349]}),
-    ("POŠTA", "posta", {"at": [2551, -2554]}),
+    ("ČESKÁ POŠTA", "posta", {"at": [2551, -2554]}),
     ("ZÁKLADNÍ ŠKOLA", "skola", {"at": [2197, -2045]}),
     ("MATEŘSKÁ ŠKOLA", "skola", {"at": [3140, -2205]}),
     ("NÁRODNÍ DŮM", "kultura", {"at": [2878, -2544]}),
@@ -78,7 +78,7 @@ SIGNS = [
     ("Restaurace Na Rohu", "jidlo", {"ll": [49.65203, 13.20468]}),
     # ---- okolní obce
     ("OBECNÍ ÚŘAD HRADEC", "urad", {"at": [-3328, -1107]}),
-    ("POŠTA", "posta", {"at": [-3338, -1145]}),
+    ("ČESKÁ POŠTA", "posta", {"at": [-3338, -1145]}),
     ("PENZION HRADEC", "jidlo", {"ll": [49.63682, 13.12322]}),
     ("COOP", "obchod", {"ll": [49.63594, 13.12312]}),
     ("Hospoda Myslivna", "jidlo", {"ll": [49.6347, 13.11289]}),

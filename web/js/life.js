@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { buildGraph, Track } from './traffic.js';
-import { personParts, deerParts, hareParts, birdParts } from './models.js';
+import { personParts, deerParts, hareParts, birdParts, cyclistParts } from './models.js';
 
 // Život v okolí kamery: lidé chodí po chodnících a pěšinách v obcích a čekají na zastávkách,
 // srnky se pasou na okrajích lesa (a utečou, když se přiblížíte), zajíci skáčou po polích,
 // nad krajinou létají hejna ptáků a krouží káně. Všechno jen do pár set metrů od místa pohledu.
 
-const WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2, 3.0, 2.6, 1.2, 4.2];
+const WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2, 3.0, 2.6, 1.2, 4.2, 2.8];
+const LIFT = [0.34, 0.34, 0.34, 0.34, 0.31, 0.3, 0.29, 0.28, 0.36, 0.32];
 const WALK_TYPES = new Set([1, 2, 3, 4, 7]);
 const C = (h) => new THREE.Color(h);
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
@@ -25,7 +26,7 @@ function pool(scene, geo, cap, { color = false, shadow = true, both = false } = 
   return { im, zero, hideFrom(n) { for (let i = n; i < cap; i++) im.setMatrixAt(i, zero); } };
 }
 
-export function createLife({ roads, bridges, buildings, world, scene, meta, treesBuf, stops, coarse }) {
+export function createLife({ roads, bridges, buildings, world, scene, meta, treesBuf, stops, bike, coarse }) {
   const group = new THREE.Group();
   scene.add(group);
   const heightAt = (x, z) => world.heightAt(x, z);
@@ -69,7 +70,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
   };
 
   // ---------------------------------------------------------- lidé
-  const NP = coarse ? 24 : 55, NW = coarse ? 12 : 24;
+  const NP = coarse ? 55 : 130, NW = coarse ? 14 : 28;
   const parts = personParts();
   const torso = pool(group, parts.torso, NP + NW, { color: true });
   const head = pool(group, parts.head, NP + NW);
@@ -89,10 +90,34 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     legs.im.setColorAt(i * 2, pc); legs.im.setColorAt(i * 2 + 1, pc);
     torso.im.instanceColor.needsUpdate = legs.im.instanceColor.needsUpdate = true;
   }
+  // kde chodí nejvíc lidí: náměstí, cesta z náměstí na nádraží (Nádražní), nádraží, bytovky
+  const HOT = [[-140, -1012, 90, 3], [-222, -1069, 70, 2], [-880, -1205, 90, 2.5]];
+  for (let k = 0; k <= 6; k++) {
+    const t = k / 6;
+    HOT.push([-200 + (-860 + 200) * t, -1060 + (-1200 + 1060) * t, 45, 1.4]);
+  }
+  for (const b of buildings) {
+    if (b.k !== 'flats') continue;
+    const r = b.rings[0];
+    const cx = r.reduce((a, p) => a + p[0], 0) / r.length, cz = r.reduce((a, p) => a + p[1], 0) / r.length;
+    HOT.push([cx, cz, 45, Math.hypot(cx + 880, cz + 1205) < 600 ? 1.0 : 0.4]);
+  }
+  function hotPoint(fx, fz) {
+    const near = HOT.filter(([x, z]) => Math.hypot(x - fx, z - fz) < 650);
+    const sum = near.reduce((a, h) => a + h[3], 0);
+    if (!sum) return null;
+    let r = Math.random() * sum;
+    for (const h of near) {
+      r -= h[3];
+      if (r <= 0) { const a = Math.random() * 6.28, d = Math.sqrt(Math.random()) * h[2]; return [h[0] + Math.cos(a) * d, h[1] + Math.sin(a) * d]; }
+    }
+    return null;
+  }
   function spawnWalker(fx, fz, camPos, minCam) {
     for (let tries = 0; tries < 20; tries++) {
-      const x = fx + (Math.random() * 2 - 1) * 450, z = fz + (Math.random() * 2 - 1) * 450;
-      if (around(homes, x, z) < 5) continue;
+      const hp = Math.random() < 0.7 ? hotPoint(fx, fz) : null;
+      const x = hp ? hp[0] : fx + (Math.random() * 2 - 1) * 450, z = hp ? hp[1] : fz + (Math.random() * 2 - 1) * 450;
+      if (!hp && around(homes, x, z) < 5) continue;
       const a = walkG.nearest(x, z, (i) => walkG.adj[i].length > 0, 1);
       if (a < 0) continue;
       const e = rnd(walkG.adj[a]);
@@ -128,6 +153,131 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, 0.9, sgn * 0.1), lq, ps);
       legs.im.setMatrixAt(i * 2 + k, pm.clone().multiply(lm));
     }
+  }
+
+  // ---------------------------------------------------------- cyklisté
+  // hlavně po cyklostezkách a po silnicích, kudy vede cyklotrasa (OSM), občas po ulicích a polních cestách
+  const NC = coarse ? 10 : 28;
+  const cp = cyclistParts();
+  const cBike = pool(group, cp.bike, NC, { color: true }), cFixed = pool(group, cp.fixed, NC);
+  const cTorso = pool(group, cp.torso, NC, { color: true }), cLeg = pool(group, cp.leg, NC * 2, { color: true });
+  const BIKE_T = new Set([1, 2, 3, 4, 5, 6, 9]);
+  const bikeG = buildGraph([...roads.filter((r) => BIKE_T.has(r.t)), ...(bike?.paths || []).map((p) => ({ t: 9, p }))], BIKE_T);
+  const routeCells = new Set();
+  for (const line of bike?.routes || []) {
+    for (let i = 0; i < line.length - 1; i++) {
+      const [ax, az] = line[i], [bx, bz] = line[i + 1], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 6);
+      for (let k = 0; k <= n; k++) routeCells.add(`${Math.floor((ax + (bx - ax) * k / n) / 12)},${Math.floor((az + (bz - az) * k / n) / 12)}`);
+    }
+  }
+  const onRoute = (x, z) => {
+    const cx = Math.floor(x / 12), cz = Math.floor(z / 12);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (routeCells.has(`${cx + a},${cz + b}`)) return true;
+    return false;
+  };
+  const BPREF = [0, 0.25, 1, 1.6, 1.2, 1, 0.6, 0, 0, 10];
+  const edgeW = (a, e) => {
+    let w = BPREF[e.t] || 0;
+    if (e.t !== 9 && onRoute((bikeG.X[a] + bikeG.X[e.to]) / 2, (bikeG.Z[a] + bikeG.Z[e.to]) / 2)) w *= 8;
+    return w;
+  };
+  const favEdges = [], streetEdges = [];
+  for (let a = 0; a < bikeG.n; a++) {
+    for (const e of bikeG.adj[a]) {
+      if (e.to < a) continue;
+      if (edgeW(a, e) >= 5) favEdges.push([a, e]); else if (e.t === 2 || e.t === 3) streetEdges.push([a, e]);
+    }
+  }
+  const BIKE_COLORS = [0xd12f2f, 0x1f5fbf, 0x1d1d1f, 0xf2f2f2, 0x2f9a4a, 0xf0a020, 0x8a8f96].map(C);
+  const JERSEYS = [0xe23b3b, 0x2a6fd6, 0xf2c230, 0x2e9e55, 0xf2f2f2, 0x222428, 0xff7a1a, 0x7b4cc2].map(C);
+  const cyclists = [];
+  const laneOf = (t) => (t === 9 ? 0.6 : Math.max(0.4, WIDTH[t] / 2 - 0.7));
+  function spawnCyclist(fx, fz, cam, minCam) {
+    for (let tries = 0; tries < 30; tries++) {
+      const list = Math.random() < 0.8 && favEdges.length ? favEdges : streetEdges;
+      const [a0, e] = list[Math.floor(Math.random() * list.length)];
+      let a = a0, b = e.to;
+      if (Math.random() < 0.5) [a, b] = [b, a];
+      const x = bikeG.X[a], z = bikeG.Z[a];
+      if (Math.hypot(x - fx, z - fz) > 600 || !detailAt(x, z)) continue;
+      if (cam && Math.hypot(x - cam.x, z - cam.z) < minCam) continue;
+      const tr = new Track();
+      tr.push(x, z, laneOf(e.t), e.t);
+      tr.push(bikeG.X[b], bikeG.Z[b], laneOf(e.t), e.t);
+      return { tr, s: Math.random() * tr.len, prev: a, node: b, v: 4.2 + Math.random() * 2.6, ph: Math.random() * 6,
+        frame: rnd(BIKE_COLORS), shirt: rnd(JERSEYS), pants: rnd(PANTS) };
+    }
+    return null;
+  }
+  function extendCyclist(c) {
+    while (c.tr.len - c.s < 40) {
+      const from = c.prev, at = c.node;
+      const ax = bikeG.X[at] - bikeG.X[from], az = bikeG.Z[at] - bikeG.Z[from], al = Math.hypot(ax, az) || 1;
+      let sum = 0;
+      const opts = [];
+      for (const e of bikeG.adj[at]) {
+        if (e.to === from) continue;
+        const bx = bikeG.X[e.to] - bikeG.X[at], bz = bikeG.Z[e.to] - bikeG.Z[at], bl = Math.hypot(bx, bz) || 1;
+        const cos = (ax * bx + az * bz) / (al * bl);
+        const w = edgeW(at, e) * (0.15 + (1 + cos) ** 2);
+        if (w > 0) { opts.push([e, w]); sum += w; }
+      }
+      let e = null;
+      if (!opts.length) e = bikeG.adj[at].find((q) => q.to === from);
+      else { let r = Math.random() * sum; for (const [q, w] of opts) { r -= w; if (r <= 0) { e = q; break; } } e ||= opts[opts.length - 1][0]; }
+      if (!e) return false;
+      c.prev = at; c.node = e.to;
+      c.tr.push(bikeG.X[e.to], bikeG.Z[e.to], laneOf(e.t), e.t);
+    }
+    if (c.s > 300) { const d = c.tr.trim(c.s - 20); c.s -= d; }
+    return true;
+  }
+  const CP = [0, 0, 0, 0, 0], CQ = [0, 0, 0, 0, 0];
+  function updateCyclists(dt, focus, cam, near, spawn) {
+    for (let k = cyclists.length - 1; k >= 0; k--) {
+      const c = cyclists[k];
+      if (!near || Math.hypot(c.x - focus.x, c.z - focus.z) > 800) cyclists.splice(k, 1);
+    }
+    if (spawn && cyclists.length < NC) {
+      const first = cyclists.length < 2;
+      for (let k = 0; k < (first ? 12 : 1); k++) {
+        const c = spawnCyclist(focus.x, focus.z, cam, first ? 0 : 150);
+        if (c && cyclists.length < NC) cyclists.push(c);
+      }
+    }
+    let i = 0;
+    for (const c of cyclists) {
+      c.s += c.v * dt;
+      if (!extendCyclist(c)) { c.x = 1e9; continue; }
+      c.tr.at(c.s, CP); c.tr.at(c.s - 1.04, CQ);
+      const lift = LIFT[CP[2]] ?? 0.32;
+      const yF = (bridges.at(CP[0], CP[1], WIDTH[CP[2]], CP[3], CP[4]) ?? heightAt(CP[0], CP[1])) + lift;
+      const yR = (bridges.at(CQ[0], CQ[1], WIDTH[CQ[2]], CQ[3], CQ[4]) ?? heightAt(CQ[0], CQ[1])) + lift;
+      const x = (CP[0] + CQ[0]) / 2, z = (CP[1] + CQ[1]) / 2;
+      c.x = x; c.z = z;
+      if (!detailAt(x, z)) continue;
+      const yaw = Math.atan2(-(CP[1] - CQ[1]), CP[0] - CQ[0]);
+      const pitch = Math.atan2(yF - yR, 1.04);
+      q4.setFromEuler(new THREE.Euler(0, yaw, pitch, 'YXZ'));
+      m4.compose(v3.set(x, (yF + yR) / 2, z), q4, s3);
+      if (c.slot !== i) {
+        c.slot = i;
+        cBike.im.setColorAt(i, c.frame); cTorso.im.setColorAt(i, c.shirt);
+        cLeg.im.setColorAt(i * 2, c.pants); cLeg.im.setColorAt(i * 2 + 1, c.pants);
+        cBike.im.instanceColor.needsUpdate = cTorso.im.instanceColor.needsUpdate = cLeg.im.instanceColor.needsUpdate = true;
+      }
+      cBike.im.setMatrixAt(i, m4); cFixed.im.setMatrixAt(i, m4); cTorso.im.setMatrixAt(i, m4);
+      c.ph += dt * c.v * 1.6;
+      for (const [k, sg] of [[0, 1], [1, -1]]) {
+        const lm = new THREE.Matrix4().compose(new THREE.Vector3(-0.12, 0.9, sg * 0.11),
+          new THREE.Quaternion().setFromAxisAngle(ax, Math.sin(c.ph + (k ? Math.PI : 0)) * 0.55 + 0.25), s3);
+        cLeg.im.setMatrixAt(i * 2 + k, m4.clone().multiply(lm));
+      }
+      i++;
+    }
+    for (let k = cyclists.length - 1; k >= 0; k--) if (cyclists[k].x === 1e9) cyclists.splice(k, 1);
+    cBike.hideFrom(i); cFixed.hideFrom(i); cTorso.hideFrom(i); cLeg.hideFrom(i * 2);
+    for (const pl of [cBike, cFixed, cTorso, cLeg]) pl.im.instanceMatrix.needsUpdate = true;
   }
 
   // ---------------------------------------------------------- zvířata
@@ -207,7 +357,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       for (const p of [...people]) if (!near || Math.hypot(p.x - focus.x, p.z - focus.z) > 650) people.splice(people.indexOf(p), 1);
       if (spawn && people.length < NP) {
         const first = people.length < 3;
-        for (let k = 0; k < (first ? 12 : 2); k++) {
+        for (let k = 0; k < (first ? 30 : 4); k++) {
           const p = spawnWalker(focus.x, focus.z, cam, first ? 0 : 120);
           if (p && people.length < NP) people.push(p);
         }
@@ -255,6 +405,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       for (let k = people.length - 1; k >= 0; k--) if (people[k].dead) people.splice(k, 1);
       for (let k = i; k < NP + NW; k++) hidePerson(k);
       torso.im.instanceMatrix.needsUpdate = head.im.instanceMatrix.needsUpdate = legs.im.instanceMatrix.needsUpdate = true;
+      updateCyclists(dt, focus, cam, near, spawn);
     }
 
     // ---- zvířata
@@ -381,7 +532,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       buzBody.hideFrom(zi); buzWing.hideFrom(zi * 2);
       buzBody.im.instanceMatrix.needsUpdate = buzWing.im.instanceMatrix.needsUpdate = true;
     }
-    return people.length + deer.length + hares.length + flocks.length > 0;
+    return people.length + cyclists.length + deer.length + hares.length + flocks.length > 0;
   }
 
   function personColorsOnce(p, i) {
@@ -393,13 +544,13 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     torso.im.setMatrixAt(i, torso.zero); head.im.setMatrixAt(i, torso.zero);
     legs.im.setMatrixAt(i * 2, torso.zero); legs.im.setMatrixAt(i * 2 + 1, torso.zero);
   }
-  const peopleMeshes = [torso.im, head.im, legs.im];
+  const peopleMeshes = [torso.im, head.im, legs.im, cBike.im, cFixed.im, cTorso.im, cLeg.im];
   const animalMeshes = [deerBody.im, deerNeck.im, deerLeg.im, hareBody.im, birdBody.im, birdWing.im, buzBody.im, buzWing.im];
   return {
     group, update,
-    setPeople(v) { showPeople = v; for (const m of peopleMeshes) m.visible = v; if (!v) { people.length = 0; waiting.length = 0; } },
+    setPeople(v) { showPeople = v; for (const m of peopleMeshes) m.visible = v; if (!v) { people.length = 0; waiting.length = 0; cyclists.length = 0; } },
     setAnimals(v) { showAnimals = v; for (const m of animalMeshes) m.visible = v; if (!v) { deer.length = 0; hares.length = 0; flocks.length = 0; buzzards.length = 0; } },
     get active() { return showPeople || showAnimals; },
-    debug: { people, deer, hares, flocks, waiting },
+    debug: { people, deer, hares, flocks, waiting, cyclists },
   };
 }

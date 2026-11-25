@@ -299,7 +299,7 @@ function shelterGeo(rail) {
 }
 
 // ---------------------------------------------------------------- hlavní objekt
-export function createTraffic({ roads, bridges, buildings, world, scene, stops, coarse, drive }) {
+export function createTraffic({ roads, bridges, buildings, world, scene, stops, parking, coarse, drive }) {
   const group = new THREE.Group();
   scene.add(group);
   const G = buildGraph(roads, ROAD_TYPES);
@@ -345,8 +345,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
 
   // ---------------------------------------------------------- vozidla
   const caps = coarse
-    ? { car: 22, hatch: 10, suv: 8, combi: 8, van: 6, truck: 4, semi: 4, trailer: 4, tractor: 3, wagon: 3, bus: 10, unit: 4, loco: 2, coach: 10 }
-    : { car: 45, hatch: 20, suv: 16, combi: 16, van: 12, truck: 8, semi: 8, trailer: 8, tractor: 6, wagon: 6, bus: 10, unit: 4, loco: 2, coach: 10 };
+    ? { car: 32, hatch: 14, suv: 12, combi: 12, van: 8, truck: 6, semi: 6, trailer: 6, tractor: 3, wagon: 3, bus: 10, unit: 4, loco: 2, coach: 10 }
+    : { car: 70, hatch: 30, suv: 24, combi: 24, van: 18, truck: 12, semi: 12, trailer: 12, tractor: 6, wagon: 6, bus: 10, unit: 4, loco: 2, coach: 10 };
   const pool = createPools(group, caps);
   const vehicles = [];          // auta v okolí + autobusy
   const RADIUS = coarse ? 550 : 750;
@@ -359,7 +359,19 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     car: [6, 4, 2.2, 0.9, 0.25, 0.08, 0.02], truck: [9, 4, 0.5, 0.2, 0.05, 0, 0], semi: [12, 3, 0.15, 0.05, 0, 0, 0],
     tractor: [0.4, 1.2, 0.5, 1.5, 2, 2.5, 2.5], van: [5, 4, 2.5, 1, 0.2, 0.05, 0],
   };
-  const prefOf = (kind) => PREF[kind] || PREF.car;
+  // průjezdná doprava po hlavním tahu (I/26 Plzeň – Stod – Holýšov): drží se silnice I. třídy
+  const MAIN_PREF = [60, 1.5, 0.15, 0.02, 0, 0, 0];
+  const MAIN_MIX = [['car', 0.4], ['hatch', 0.12], ['suv', 0.12], ['combi', 0.12], ['van', 0.1], ['truck', 0.06], ['semi', 0.08]];
+  const MAIN_N = coarse ? 16 : 36;
+  // denní doba: ve špičce (6–9, 14–18 h) plno, přes den hodně, večer míň, v noci málo
+  const rush = () => {
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    if ((h >= 6 && h < 9) || (h >= 14 && h < 18)) return 1;
+    if (h >= 9 && h < 14) return 0.8;
+    if (h >= 18 && h < 22) return 0.55;
+    return 0.25;
+  };
+  const prefOf = (kind, main) => (main ? MAIN_PREF : PREF[kind] || PREF.car);
 
   // hrany v buňkách 150 m pro vznik vozidel v okolí
   const ECELL = 150, ecells = new Map();
@@ -377,14 +389,14 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
   function chooseNext(v) {
     const from = v.prev, at = v.node;
     const ax = G.X[at] - G.X[from], az = G.Z[at] - G.Z[from], al = Math.hypot(ax, az) || 1;
-    const pref = prefOf(v.kind);
+    const pref = prefOf(v.kind, v.main);
     let sum = 0;
     const opts = [];
     for (const e of G.adj[at]) {
       if (e.to === from) continue;
       const bx = G.X[e.to] - G.X[at], bz = G.Z[e.to] - G.Z[at], bl = Math.hypot(bx, bz) || 1;
       const cos = (ax * bx + az * bz) / (al * bl);
-      if (cos < -0.5 && v.kind !== 'car') continue;            // ostré otočení jen osobní auto
+      if (cos < -0.5 && (v.kind !== 'car' || v.main)) continue;            // ostré otočení jen osobní auto
       let w = (pref[e.t] || 0) * (0.25 + (1 + cos) ** 2);
       if (!inside(G.X[e.to], G.Z[e.to])) w *= 0.05;
       if (w <= 0) continue;
@@ -430,8 +442,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     vehicles.splice(vehicles.indexOf(v), 1);
   }
 
-  function spawnNear(kind, fx, fz, cam, minCam) {
-    const pref = prefOf(kind);
+  function spawnNear(kind, fx, fz, cam, minCam, main = false) {
+    const pref = prefOf(kind, main);
     const cells = [];
     const r = Math.ceil(RADIUS / ECELL), cx = Math.floor(fx / ECELL), cz = Math.floor(fz / ECELL);
     for (let i = 0; i < 12; i++) {
@@ -461,7 +473,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     const tr = new Track();
     tr.push(G.X[a], G.Z[a], laneOffset(e.t), e.t);
     tr.push(G.X[b], G.Z[b], laneOffset(e.t), e.t);
-    const v = addVehicle(kind, tr, { prev: a, node: b, roam: true });
+    const v = addVehicle(kind, tr, { prev: a, node: b, roam: true, main });
     if (!v) return null;
     v.s = tr.len * Math.random();
     extend(v);
@@ -907,6 +919,70 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     for (const o of stopGroup.children) if (o.userData.ground) o.position.y = world.heightAt(...o.userData.ground);
   };
 
+  // ---------------------------------------------------------- zaparkovaná auta (parkoviště z OSM)
+  // kolmé stání v řadách (5 m stání, 6 m ulička), na úzkých plochách podélně; obsazenost podle místa
+  const BUSY_SPOTS = [[-955, -830, 160, 0.92], [-140, -1012, 120, 0.85], [-222, -1069, 80, 0.85], [-315, -1307, 80, 0.8], [-880, -1205, 120, 0.8]];
+  const PARK_KINDS = ['car', 'car', 'hatch', 'hatch', 'suv', 'combi', 'van'];
+  const parked = [];
+  {
+    const pin = (x, z, r) => {
+      let ins = false;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        if ((r[i][1] > z) !== (r[j][1] > z) && x < (r[j][0] - r[i][0]) * (z - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) ins = !ins;
+      }
+      return ins;
+    };
+    for (const lot of parking || []) {
+      const r = lot.p;
+      if (!inside(r[0][0], r[0][1])) continue;
+      let ux = 1, uz = 0, best = 0;
+      for (let i = 0; i < r.length - 1; i++) {
+        const dx = r[i + 1][0] - r[i][0], dz = r[i + 1][1] - r[i][1], L = Math.hypot(dx, dz);
+        if (L > best) { best = L; ux = dx / L; uz = dz / L; }
+      }
+      const vx = -uz, vz = ux;
+      let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+      for (const [x, z] of r) {
+        const u = x * ux + z * uz, v = x * vx + z * vz;
+        u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+      }
+      let busy = lot.busy ?? 0.6;
+      const [cx, cz] = r.reduce((a, q) => [a[0] + q[0] / r.length, a[1] + q[1] / r.length], [0, 0]);
+      for (const [bx, bz, br, bb] of BUSY_SPOTS) if (Math.hypot(cx - bx, cz - bz) < br) busy = Math.max(busy, bb);
+      const at = (u, v) => [u * ux + v * vx, u * uz + v * vz];
+      const fits = (u, v, hu, hv) => [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0]].every(([a, b]) => pin(...at(u + a * hu, v + b * hv), r));
+      const narrow = v1 - v0 < 9;
+      if (narrow) {                               // podélné stání
+        const v = (v0 + v1) / 2;
+        for (let u = u0 + 3.5; u < u1 - 3; u += 6.2) {
+          if (fits(u, v, 2.4, 1.0) && Math.random() < busy) parked.push({ p: at(u, v), d: Math.random() < 0.5 ? [ux, uz] : [-ux, -uz] });
+        }
+      } else {
+        for (let v = v0 + 2.8, row = 0; v < v1 - 2.3; row++) {
+          for (let u = u0 + 1.6; u < u1 - 1.4; u += 2.6) {
+            if (fits(u, v, 0.95, 2.3) && Math.random() < busy) parked.push({ p: at(u + (Math.random() - 0.5) * 0.25, v + (Math.random() - 0.5) * 0.3), d: (row % 2 ? -1 : 1) * (Math.random() < 0.85 ? 1 : -1) > 0 ? [vx, vz] : [-vx, -vz] });
+          }
+          v += row % 2 ? 5.2 : 5.2 + 6.0;          // dvě řady čelem k sobě, mezi dvojicemi ulička
+        }
+      }
+    }
+  }
+  const parkCaps = {};
+  for (const c of parked) { c.kind = rnd(PARK_KINDS); parkCaps[c.kind] = (parkCaps[c.kind] || 0) + 1; }
+  const ppool = createPools(group, parkCaps);
+  for (const c of parked) c.slot = ppool.take(c.kind, c.kind === 'van' ? [rnd(VAN_COLORS)] : [rnd(CAR_COLORS)]);
+  const refreshParked = () => {
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up3 = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
+    for (const c of parked) {
+      if (c.slot < 0) continue;
+      q.setFromAxisAngle(up3, Math.atan2(-c.d[1], c.d[0]));
+      m.compose(pos.set(c.p[0], world.heightAt(c.p[0], c.p[1]) + 0.04, c.p[1]), q, one);
+      ppool.set(c.kind, c.slot, m);
+    }
+    ppool.flush();
+  };
+  refreshParked();
+
   // ---------------------------------------------------------- řízení
   let enabled = true;
   let roamT = 0;
@@ -923,11 +999,18 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     if (near && roamT <= 0) {
       roamT = 0.25;
       const fresh = vehicles.length < 4;
+      const f = rush();
       for (const [kind] of MIX) {
-        const have = vehicles.filter((v) => v.kind === kind && v.roam).length;
-        if (have < target[kind]) {
+        const have = vehicles.filter((v) => v.kind === kind && v.roam && !v.main).length;
+        if (have < target[kind] * (0.4 + 0.6 * f)) {
           for (let k = 0; k < (fresh ? 8 : 2); k++) spawnNear(kind, focus.x, focus.z, camera.position, fresh ? 0 : 220);
         }
+      }
+      const mains = vehicles.filter((v) => v.main).length;
+      if (mains < MAIN_N * f) {
+        let r = Math.random(), kind = 'car';
+        for (const [k, w] of MAIN_MIX) { r -= w; if (r <= 0) { kind = k; break; } }
+        for (let k = 0; k < (fresh ? 10 : 2); k++) spawnNear(kind, focus.x, focus.z, camera.position, fresh ? 0 : 220, true);
       }
     }
     updateBuses(dt);
@@ -950,6 +1033,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
   function setEnabled(v) {
     enabled = v;
     pool.setVisible(v);
+    ppool.setVisible(v);
     if (!v) {
       for (const veh of [...vehicles]) removeVehicle(veh);
       for (const b of buses) { b.v = null; b.pause = Math.random() * 20; }
@@ -959,7 +1043,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     }
   }
   return {
-    group, update, setEnabled, refreshStops, get enabled() { return enabled; },
-    debug: { vehicles, trains, lines, buses, railStopS, G },
+    group, update, setEnabled, refreshStops, refreshParked, get enabled() { return enabled; },
+    debug: { vehicles, trains, lines, buses, railStopS, G, parked },
   };
 }

@@ -2,13 +2,13 @@ import * as THREE from 'three';
 
 // Typy – musí souhlasit s tools/build_data.py (ROAD)
 //  0 silnice I. tř., 1 silnice II./III. tř., 2 ulice, 3 asfaltová cesta, 4 panely,
-//  5 štěrková cesta, 6 polní cesta, 7 pěšina, 8 železnice
-const WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2, 3.0, 2.6, 1.2, 4.2];
+//  5 štěrková cesta, 6 polní cesta, 7 pěšina, 8 železnice, 9 cyklostezka (OSM, kreslí se zvlášť)
+const WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2, 3.0, 2.6, 1.2, 4.2, 2.8];
 // výrazně nad terénem (jinak terén mezi uzly prosvítá); železnice / zpevněné nad nezpevněnými
-const LIFT = [0.34, 0.34, 0.34, 0.34, 0.31, 0.3, 0.29, 0.28, 0.36];
+const LIFT = [0.34, 0.34, 0.34, 0.34, 0.31, 0.3, 0.29, 0.28, 0.36, 0.32];
 
 // stylizované ploché barvy podle typu
-const COLOR = [0x7a7c82, 0x7a7c82, 0x7a7c82, 0x7a7c82, 0xb8b4aa, 0xcdc2a8, 0xb89c74, 0xc4ad88, 0x7a6e64]
+const COLOR = [0x7a7c82, 0x7a7c82, 0x7a7c82, 0x7a7c82, 0xb8b4aa, 0xcdc2a8, 0xb89c74, 0xc4ad88, 0x7a6e64, 0xa0665a]
   .map((c) => new THREE.Color(c));
 
 // koleje: dvě ocelové kolejnice (rozchod 1435 mm) na betonových pražcích po 0,6 m

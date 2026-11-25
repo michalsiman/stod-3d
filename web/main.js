@@ -46,7 +46,7 @@ const get = (p, kind = 'json') => fetch(`data/${p}`).then((r) => {
 
 const meta = await get('meta.json');
 loaderText.textContent = 'Načítám terén, budovy a cesty…';
-const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops] = await Promise.all([
+const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops, bike, parking] = await Promise.all([
   get('far_h.bin', 'bin'),
   new THREE.TextureLoader().loadAsync('data/far.png'),
   get('buildings.json'), get('roads.json'), get('bridges.json'), get('fences.json'), get('power.json'),
@@ -55,6 +55,8 @@ const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData
   fetch('data/lamps.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/signs.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/stops.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+  fetch('data/bike.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+  fetch('data/parking.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
 ]);
 farTex.colorSpace = THREE.SRGBColorSpace;
 farTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -115,6 +117,8 @@ scene.add(landmarks.group);
 const trees = createTrees({ buf: treesBuf, meta, world, exclude: landmarks.keepOut });
 const fenceLayer = createFences({ fences, world });
 const bridgeInfo = prepareBridges([...bridges, ...EXTRA_BRIDGES], roads, world);
+// cyklostezky (OSM) – vlastní pás v červenohnědém asfaltu
+if (bike?.paths?.length) world.builders.push(createRoads({ roads: bike.paths.map((p) => ({ t: 9, p })), bridges: bridgeInfo, world }));
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
@@ -155,9 +159,10 @@ const drive = createDrive({
 });
 
 // živá mapa: doprava, lidé, zvířata (přepínače si pamatují volbu)
-const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, coarse: isCoarse, drive });
-const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, coarse: isCoarse });
+const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking, coarse: isCoarse, drive });
+const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, bike, coarse: isCoarse });
 world.builders.push(() => traffic.refreshStops());
+world.builders.push(() => traffic.refreshParked());
 {
   const opt = (key, def) => { try { const v = localStorage.getItem(`stod3d.${key}`); return v === null ? def : v === '1'; } catch { return def; } };
   const bind = (id, key, apply) => {

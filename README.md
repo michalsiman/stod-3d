@@ -118,6 +118,13 @@ Přepínače v panelu (Zobrazení → Doprava / Lidé / Zvířata a ptáci, volb
 * **lidé a zvířata** (`web/js/life.js`) – chodci na chodnících v obcích, lidé čekající na zastávkách,
   srnky u okrajů lesa (utečou, když se kamera přiblíží), zajíci na polích, hejna ptáků a kroužící káně.
 
+* **cyklostezky a cyklisté** – `tools/build_osm_extra.py` → `web/data/bike.json`: cyklostezky (červenohnědý pás)
+  a cyklotrasy (3 Praha–Plzeň–Regensburg, 2166, 2209, 2269, 2270, 2271) z OSM; cyklisté jezdí hlavně po nich.
+* **parkoviště** – tamtéž → `web/data/parking.json`; zaparkovaná auta v řadách, u nemocnice, náměstí, úřadu,
+  pošty a nádraží plnější.
+* **hlavní tah** I/26 má navíc stálý proud průjezdných aut a kamionů; počet aut podle denní doby (špičky 6–9 a 14–18 h).
+* lidé chodí nejvíc po náměstí, Nádražní ulici k nádraží, u nádraží a u bytovek.
+
 Modely jsou v `web/js/models.js` (sloučené kvádry s barvami vrcholů, vykreslené jako instance).
 
 ## Přegenerování dat

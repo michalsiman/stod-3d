@@ -251,3 +251,25 @@ export function birdParts(big = false) {
     wing: merge([box(0.13 * k, 0.012 * k, 0.32 * k, 0.02 * k, 0, 0.16 * k, c)]),    // od ramene do +z
   };
 }
+
+// ---------------------------------------------------------------- cyklista (x = dopředu, počátek na zemi pod středem kola)
+export function cyclistParts() {
+  const skin = 0xe6c3a0, tyre = 0x1d1d1f, metal = 0x9aa0a6;
+  return {
+    bike: merge([                                            // rám (barva instance)
+      slab(0.58, 0.05, 0.05, 0.15, 0.84, 0, 0.05), slab(0.62, 0.05, 0.05, 0.22, 0.53, 0, 0.77),
+      slab(0.52, 0.045, 0.045, -0.07, 0.57, 0, 1.84), box(0.52, 0.04, 0.04, -0.26, 0.33, 0),
+      slab(0.62, 0.04, 0.04, -0.33, 0.58, 0, 0.9),
+    ]),
+    fixed: merge([
+      cyl(0.34, 0.05, 0.52, 0.34, 0, tyre, 14), cyl(0.34, 0.05, -0.52, 0.34, 0, tyre, 14),
+      cyl(0.08, 0.06, 0.52, 0.34, 0, metal, 6), cyl(0.08, 0.06, -0.52, 0.34, 0, metal, 6),
+      slab(0.42, 0.04, 0.04, 0.48, 0.55, 0, 1.38, metal), box(0.06, 0.04, 0.52, 0.42, 0.92, 0, 0x222222),
+      box(0.22, 0.05, 0.12, -0.14, 0.86, 0, 0x222222),        // sedlo
+      box(0.18, 0.2, 0.18, 0.33, 1.6, 0, skin), box(0.26, 0.11, 0.22, 0.31, 1.74, 0, 0x2f6fb5),   // hlava, helma
+    ]),
+    torso: merge([slab(0.62, 0.32, 0.36, 0.05, 1.18, 0, 0.9),             // předkloněný trup
+      ...pair((s) => slab(0.53, 0.08, 0.08, 0.33, 1.17, s * 0.18, -1.24))]),  // ruce k řídítkům
+    leg: merge([box(0.13, 0.62, 0.14, 0, -0.31, 0)]),           // od sedla k pedálu
+  };
+}
