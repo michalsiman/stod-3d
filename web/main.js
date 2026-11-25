@@ -10,6 +10,8 @@ import { createSports } from './js/sports.js';
 import { createNightGlow } from './js/nightglow.js';
 import { createFarLights } from './js/farlights.js';
 import { createRain } from './js/rain.js';
+import { createSnow } from './js/snow.js';
+import { SEASON } from './js/season.js';
 import { createToon } from './js/toon.js';
 import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
@@ -93,6 +95,7 @@ scene.add(hemi);
 let sunPos = { el: 40, az: 205 };
 let signLayer = null;
 const rain = createRain(scene);
+const snow = createSnow(scene);
 const toon = createToon(renderer, isCoarse);
 
 // stíny – přepínač (pamatuje si volbu); na mobilu ve výchozím stavu vypnuté
@@ -101,6 +104,7 @@ try { const v = localStorage.getItem('stod3d.shadows'); if (v !== null) shadows 
 function applyLight() {
   applySun(sunPos, { sun, hemi, sky, fog: scene.fog, renderer, shadowsWanted: shadows });
   rain.weather({ sun, hemi, sky, fog: scene.fog });
+  snow.weather({ sun, hemi, sky, fog: scene.fog });
   renderer.shadowMap.enabled = sun.castShadow;
   updateLamps();
   signLayer?.update();
@@ -212,6 +216,16 @@ world.builders.push(() => traffic.refreshParked());
     try { localStorage.setItem('stod3d.toon', tc.checked ? '1' : '0'); } catch { /* ignorovat */ }
     toon.set(tc.checked);
     invalidate();
+  });
+  // sníh: padající vločky + zasněžená krajina (plynulé zasněžení)
+  const sc = document.getElementById('snow');
+  sc.checked = opt('snow', false);
+  snow.set(sc.checked);
+  SEASON.snow.value = sc.checked ? 1 : 0;
+  sc.addEventListener('change', () => {
+    try { localStorage.setItem('stod3d.snow', sc.checked ? '1' : '0'); } catch { /* ignorovat */ }
+    snow.set(sc.checked);
+    applyLight();
   });
   const rc = document.getElementById('rain');
   rc.checked = opt('rain', false);
@@ -495,9 +509,14 @@ renderer.setAnimationLoop(() => {
   // mlha jen na obzoru: s výškou kamery se odsouvá (z výšky není město zamlžené); v dešti blíž
   {
     const camH = Math.max(0, camera.position.y - world.heightAt(camera.position.x, camera.position.z));
-    scene.fog.near = (rain.on ? 600 : 3000) + camH * 4;
-    scene.fog.far = (rain.on ? 6000 : 14000) + camH * 9;
+    const bad = rain.on || snow.on;
+    scene.fog.near = (bad ? 600 : 3000) + camH * 4;
+    scene.fog.far = (bad ? 6000 : 14000) + camH * 9;
     if (rain.on) { rain.update(clock.elapsedTime, camera, NIGHT.night.value); dirty = true; }
+    if (snow.on) { snow.update(clock.elapsedTime, camera, NIGHT.night.value, renderer.getPixelRatio()); dirty = true; }
+    // sněhová pokrývka narůstá / taje plynule
+    const want = snow.on ? 1 : 0;
+    if (SEASON.snow.value !== want) { SEASON.snow.value += Math.sign(want - SEASON.snow.value) * Math.min(Math.abs(want - SEASON.snow.value), dt * 0.5); dirty = true; }
   }
   // doprava a život: jen když je kamera dost nízko, aby šlo něco vidět (jinak se nekreslí pořád dokola)
   if (traffic.enabled || life.active) {

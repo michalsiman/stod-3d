@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SEASON } from './season.js';
 import { patch } from './glsl.js';
 import { NIGHT } from './night.js';
 import { FACADES } from './landmarks.js';
@@ -402,8 +403,10 @@ export function createBuildings({ buildings, world, skip }) {
       vertHead: 'attribute vec3 aRoof; varying vec3 vRoof;',
       vertBody: 'vRoof = aRoof;',
       fragHead: ROOF_GLSL,
-      afterColor: 'diffuseColor.rgb = roofCourses(diffuseColor.rgb);',
+      afterColor: 'diffuseColor.rgb = roofCourses(diffuseColor.rgb);\n  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.92, .94, .98), uSnow * .85);',
     });
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uSnow;');
+    sh.uniforms.uSnow = SEASON.snow;
   };
   rm.customProgramCacheKey = () => 'roof-courses';
   wm.customProgramCacheKey = () => 'walls-windows';

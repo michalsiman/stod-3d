@@ -37,6 +37,7 @@ ${PALETTE_GLSL}
 // Barva plochy s hladkými hranicemi: 3×3 pixely mapy pokryvu s váhami kvadratického B-splinu,
 // vyhrává plocha s největší vahou. Pole se rozlišují i podle stavu (zelený kanál), takže hranice
 // dvou sousedních polí je plynulá křivka a ne schody po pixelech.
+vec3 landBase(int cls);
 int landKey(vec4 t){
   int r = int(t.r * 255. + .5);
   return r == 2 ? 512 + int(t.g * 255. + .5) : r;
@@ -66,8 +67,11 @@ vec3 landColor(vec2 p){
   int cls = int(t.r * 255. + .5);
   if (cls == 2) {
     int g = int(t.g * 255. + .5), v = (g % 64) % 3;
-    return seasonField(min(g / 64, 2), fieldColor(0, v), fieldColor(1, v), fieldColor(2, v));
+    return snowy(seasonField(min(g / 64, 2), fieldColor(0, v), fieldColor(1, v), fieldColor(2, v)), .95);
   }
+  return snowy(landBase(cls), cls == 11 ? 0. : cls == 5 || cls == 6 || cls == 7 ? .55 : cls == 9 || cls == 10 || cls == 17 || cls == 20 ? .75 : .95);
+}
+vec3 landBase(int cls){
   vec3 col = classColor(cls);
   // louky, trávníky, zahrady, křoviny, hřbitovy: svěžest podle ročního období
   if (cls == 1 || cls == 3 || cls == 4 || cls == 8 || cls == 19) return seasonGrass(col);
@@ -84,6 +88,7 @@ export function createTerrainMaterials({ farTex, meta }) {
   // pohled zdálky: zelené plochy v textuře podle ročního období šednou / hnědnou
   far.onBeforeCompile = (shader) => {
     shader.uniforms.uDoy = SEASON.doy;
+    shader.uniforms.uSnow = SEASON.snow;
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n#define hexc(r, g, b) pow(vec3(r, g, b) / 255., vec3(2.2))\n${SEASON_GLSL}`)
       .replace('#include <map_fragment>', `#include <map_fragment>
@@ -97,6 +102,7 @@ export function createTerrainMaterials({ farTex, meta }) {
           float l = dot(c, vec3(.3, .55, .15));
           c = mix(c, hexc(158, 120, 88) * (.6 + l * 1.6), yel * plow * .85);
           c = mix(c, hexc(118, 156, 76) * (.6 + l * 1.4), yel * sprout * .7);
+          c = snowy(c, c.b > c.g * 1.05 && c.b > c.r ? 0. : .9);
           diffuseColor.rgb = c; }`);
   };
 
@@ -105,7 +111,7 @@ export function createTerrainMaterials({ farTex, meta }) {
     const uniforms = {
       uLC: { value: lcTex },
       uRect: { value: new THREE.Vector4(x0, z0, meta.tile, lcTex.image.width) },
-      uDoy: SEASON.doy,
+      uDoy: SEASON.doy, uSnow: SEASON.snow,
     };
     const mat = new THREE.MeshLambertMaterial({ flatShading: true });
     mat.onBeforeCompile = (shader) => {

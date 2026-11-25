@@ -2,10 +2,13 @@
 // se podle něj mění (jaro zelené, léto zralé obilí a strniště, podzim zorané a hnědé, listí žloutne
 // a opadá, v zimě šedohnědá tráva a holé stromy). Nastavuje sun.js (createTimeControls).
 
-export const SEASON = { doy: { value: 172 } };
+export const SEASON = { doy: { value: 172 }, snow: { value: 0 } };
 
 export const SEASON_GLSL = /* glsl */ `
 uniform float uDoy;
+uniform float uSnow;          // 0 bez sněhu … 1 zasněženo
+// sněhová pokrývka: plochy shora bílé, mírně modravé ve stínu, tráva místy prosvítá
+vec3 snowy(vec3 c, float k){ float l = dot(c, vec3(.3, .55, .15)); return mix(c, vec3(.93, .95, .99) * (.86 + l * .5), uSnow * k); }
 // listí na listnáčích: raší v dubnu, opadává koncem října a v listopadu
 float leafAmt(){ return smoothstep(100., 128., uDoy) * (1. - smoothstep(292., 320., uDoy)); }
 float autumnAmt(){ return smoothstep(262., 295., uDoy); }

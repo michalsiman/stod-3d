@@ -68,14 +68,23 @@ export function createTrees({ buf, meta, world, exclude }) {
   const decMat = mat.clone();
   decMat.onBeforeCompile = (shader) => {
     shader.uniforms.uDoy = SEASON.doy;
+    shader.uniforms.uSnow = SEASON.snow;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nuniform float uDoy;\nfloat leafAmt(){ return smoothstep(100., 128., uDoy) * (1. - smoothstep(292., 320., uDoy)); }`)
       .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed *= mix(.72, 1., leafAmt());');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${COMMON}\n${SEASON_GLSL}`)
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = seasonLeaf(diffuseColor.rgb);');
+      .replace('#include <color_fragment>', '#include <color_fragment>\n{ vec3 nv = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))); float upw = max(dot(nv, normalize((viewMatrix * vec4(0., 1., 0., 0.)).xyz)), 0.);\n  diffuseColor.rgb = snowy(seasonLeaf(diffuseColor.rgb), .4 * upw); }');
   };
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x7a5c44 });
+  // jehličnany: sníh na horních plochách
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uSnow = SEASON.snow;
+    shader.uniforms.uDoy = SEASON.doy;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${COMMON}\n${SEASON_GLSL}`)
+      .replace('#include <color_fragment>', '#include <color_fragment>\n{ vec3 nv = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))); float upw = dot(nv, normalize((viewMatrix * vec4(0., 1., 0., 0.)).xyz));\n  diffuseColor.rgb = snowy(diffuseColor.rgb, .6 * smoothstep(.15, .6, abs(upw))); }');
+  };
   const decGeo = deciduousGeo(), conGeo = coniferGeo();
   const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1, 4, 1).translate(0, 0.5, 0);
 
