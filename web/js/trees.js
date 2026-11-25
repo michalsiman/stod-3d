@@ -85,6 +85,38 @@ export function createTrees({ buf, meta, world, exclude }) {
       .replace('#include <common>', `#include <common>\n${COMMON}\n${SEASON_GLSL}`)
       .replace('#include <color_fragment>', '#include <color_fragment>\n{ vec3 nv = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))); float upw = dot(nv, normalize((viewMatrix * vec4(0., 1., 0., 0.)).xyz));\n  diffuseColor.rgb = snowy(diffuseColor.rgb, .6 * smoothstep(.15, .6, abs(upw))); }');
   };
+  // spadané listí: plochý kruh pod korunou; v shaderu skvrny listí (šum podle polohy), hustší u kmene,
+  // množství a barva podle ročního období (říjen přibývá, v zimě hnědne, na jaře zmizí), pod sněhem skryté
+  const litterGeo = new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
+  const litterMat = new THREE.MeshLambertMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 });
+  litterMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uDoy = SEASON.doy;
+    shader.uniforms.uSnow = SEASON.snow;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vLW; varying vec2 vLR; varying vec3 vSeed;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vLR = position.xz;
+        vLW = (modelMatrix * instanceMatrix * vec4(position, 1.)).xyz;
+        vSeed = instanceColor;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${COMMON}\n${SEASON_GLSL}\nvarying vec3 vLW; varying vec2 vLR; varying vec3 vSeed;`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          float d = uDoy;
+          float amt = max(smoothstep(280., 318., d), 1. - smoothstep(60., 105., d)) * (1. - uSnow);
+          float r = length(vLR);
+          float n = vnoise(vLW.xz * 2.6) * .65 + vnoise(vLW.xz * 7.3) * .35;
+          float dens = amt * (1.05 - r * .75) - (1. - smoothstep(.8, 1., 1. - r)) * .0;
+          if (n > dens * .95 || r > .98) discard;
+          float h = hash12(floor(vLW.xz * 5.));
+          vec3 autumn = mix(hexc(214, 152, 48), hexc(176, 78, 34), h);
+          autumn = mix(autumn, hexc(132, 96, 58), step(.7, hash12(floor(vLW.xz * 3.1) + 7.)));
+          vec3 old = mix(hexc(104, 80, 56), hexc(128, 104, 74), h);
+          float aging = smoothstep(318., 350., d) + (1. - step(200., d));
+          diffuseColor.rgb = mix(autumn, old, clamp(aging, 0., 1.)) * (.85 + .3 * fract(h * 7.));
+        }`);
+  };
+  litterMat.customProgramCacheKey = () => 'leaf-litter';
   const decGeo = deciduousGeo(), conGeo = coniferGeo();
   const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1, 4, 1).translate(0, 0.5, 0);
 
@@ -95,7 +127,7 @@ export function createTrees({ buf, meta, world, exclude }) {
     const k = cz * ncx + cx, a = starts[k], b = starts[k + 1];
     if (!(b > a)) return null;
     const r = rand(k * 31 + 7);
-    const dec = [], con = [], trunk = [];
+    const dec = [], con = [], trunk = [], litter = [];
     for (let i = a; i < b; i++) {
       const x = u16[i * 4] * 0.2 - W / 2, z = u16[i * 4 + 1] * 0.2 - H / 2;
       const h = u8[i * 8 + 4] / 5, rad = u8[i * 8 + 5] / 10, kind = u8[i * 8 + 6];
@@ -112,6 +144,10 @@ export function createTrees({ buf, meta, world, exclude }) {
         m.compose(p.set(x, g + h - ch / 2, z), q, s.set(rad, ch / 2, rad));
         col.setHSL(0.22 + r() * 0.06, 0.4 + r() * 0.12, 0.36 + r() * 0.08);
         dec.push([m.clone(), col.clone()]);
+        // spadané listí pod korunou (jen u samostatných stromů a na okraji lesa – v lese je zem tmavá)
+        if (!(kind & 2) || r() < 0.35) {
+          litter.push([new THREE.Matrix4().compose(p.set(x, g + 0.1, z), q, s.set(rad * 1.25, 1, rad * 1.25)), col.clone()]);
+        }
         if (!(kind & 2)) trunk.push([new THREE.Matrix4().compose(p.set(x, g - 0.2, z), q, s.set(1, Math.max(0.5, h - ch * 0.8), 1))]);
       }
     }
@@ -121,6 +157,13 @@ export function createTrees({ buf, meta, world, exclude }) {
       const im = new THREE.InstancedMesh(geo, material, list.length);
       list.forEach(([mm, cc], i) => { im.setMatrixAt(i, mm); if (cc) im.setColorAt(i, cc); });
       im.castShadow = im.receiveShadow = true;
+      im.computeBoundingSphere();
+      grp.add(im);
+    }
+    if (litter.length) {
+      const im = new THREE.InstancedMesh(litterGeo, litterMat, litter.length);
+      litter.forEach(([mm, cc], i) => { im.setMatrixAt(i, mm); im.setColorAt(i, cc); });
+      im.receiveShadow = true;
       im.computeBoundingSphere();
       grp.add(im);
     }
