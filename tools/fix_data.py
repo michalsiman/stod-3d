@@ -140,36 +140,46 @@ def fix_lamps():
             for cx in range(int(min(a[0], b[0]) // 20) - 1, int(max(a[0], b[0]) // 20) + 2):
                 for cz in range(int(min(a[1], b[1]) // 20) - 1, int(max(a[1], b[1]) // 20) + 2):
                     grid.setdefault((cx, cz), []).append((a, b, hw))
+    def clear(x, z):
+        """Vzdálenost od nejbližší hrany vozovky (záporná = na vozovce) a bod na ose nejbližší silnice."""
+        best = (1e9, x, z)
+        for cx in (int(x // 20) - 1, int(x // 20), int(x // 20) + 1):
+            for cz in (int(z // 20) - 1, int(z // 20), int(z // 20) + 1):
+                for a, b, hw in grid.get((cx, cz), []):
+                    dx, dz = b[0] - a[0], b[1] - a[1]
+                    l2 = dx * dx + dz * dz or 1
+                    t = max(0, min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2))
+                    px, pz = a[0] + dx * t, a[1] + dz * t
+                    d = math.hypot(x - px, z - pz) - hw
+                    if d < best[0]:
+                        best = (d, px, pz)
+        return best
+
     moved = 0
     for lamp in L:
         x0, z0 = (lamp[3], lamp[4]) if len(lamp) >= 5 else (lamp[0], lamp[1])
-        x, z = x0, z0
-        for _ in range(3):                         # může stát na dvou silnicích (křižovatka)
-            hit = None
-            for a, b, hw in grid.get((int(x // 20), int(z // 20)), []):
-                dx, dz = b[0] - a[0], b[1] - a[1]
-                l2 = dx * dx + dz * dz or 1
-                t = max(0, min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2))
-                px, pz = a[0] + dx * t, a[1] + dz * t
-                d = math.hypot(x - px, z - pz)
-                if d < hw + 0.4 and (hit is None or hw + 0.4 - d > hit[0]):
-                    if d < 0.05:                   # přesně na ose: vpravo od směru
-                        L_ = math.sqrt(l2); nx, nz = -dz / L_, dx / L_
-                    else:
-                        nx, nz = (x - px) / d, (z - pz) / d
-                    hit = (hw + 0.4 - d, px, pz, nx, nz, hw)
-            if not hit:
+        if clear(x0, z0)[0] >= 0.4:
+            continue
+        # nejbližší místo mimo všechny vozovky (aspoň 0,6 m od hrany), hledání po kružnicích
+        spot = None
+        for k in range(1, 61):
+            r = k * 0.25
+            for q in range(24):
+                a = q / 24 * 2 * math.pi
+                x, z = x0 + math.cos(a) * r, z0 + math.sin(a) * r
+                if clear(x, z)[0] >= 0.6:
+                    spot = (x, z)
+                    break
+            if spot:
                 break
-            _, px, pz, nx, nz, hw = hit
-            x, z = px + nx * (hw + 0.7), pz + nz * (hw + 0.7)
-            ang = math.atan2(-nz, -nx)            # rameno nad silnici
-            lamp[:3] = [round(x, 1), round(z, 1), round(ang, 3)]
-        if (x, z) != (x0, z0):
-            moved += 1
-            if len(lamp) < 5:
-                lamp += [x0, z0]
-            else:
-                lamp[3:5] = [x0, z0]
+        if not spot:
+            continue
+        x, z = spot
+        _, px, pz = clear(x, z)
+        lamp[:3] = [round(x, 1), round(z, 1), round(math.atan2(pz - z, px - x), 3)]     # rameno k silnici
+        if len(lamp) < 5:
+            lamp += [x0, z0]
+        moved += 1
     path.write_text(json.dumps(L, separators=(",", ":")))
     print(f"lampy: {moved} z {len(L)} posunuto z vozovky na okraj")
 
