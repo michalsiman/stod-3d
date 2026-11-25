@@ -41,6 +41,7 @@ import requests
 from PIL import Image, ImageDraw
 from pyproj import Transformer
 from scipy import ndimage
+from shapely.geometry import Polygon
 
 # ---------------------------------------------------------------- nastavení
 OBEC_KOD = 558389                    # Stod
@@ -698,14 +699,48 @@ def build_buildings(cv, dmr4, ndsm, hmin):
                      built=a.get("zastavenaplocha"), flats=a.get("pocetbytu"))
             blds.append(b)
             grid.add(b)
+    cells = {}
+
+    def index_add(poly, i):
+        x0, y0, x1, y1 = poly.bounds
+        for gx in range(int(x0 // 50), int(x1 // 50) + 1):
+            for gy in range(int(y0 // 50), int(y1 // 50) + 1):
+                cells.setdefault((gx, gy), []).append(i)
+
+    def tree_query(poly):
+        x0, y0, x1, y1 = poly.bounds
+        out = set()
+        for gx in range(int(x0 // 50), int(x1 // 50) + 1):
+            for gy in range(int(y0 // 50), int(y1 // 50) + 1):
+                for i in cells.get((gx, gy), []):
+                    if poly.intersects(blds[i]["_poly"]):
+                        out.add(i)
+        return out
+    for i, b in enumerate(blds):
+        try:
+            b["_poly"] = Polygon(b["rings"][0]).buffer(0)
+        except ValueError:
+            b["_poly"] = Polygon()
+        index_add(b["_poly"], i)
     counts = {"ruian": len(blds)}
 
     def add(cands, src):
         k = 0
         for b in cands:
-            if not grid.hit(*centroid(b["rings"][0])):
+            # duplicita = většina půdorysu se překrývá s už přidanou budovou
+            try:
+                poly = Polygon(b["rings"][0]).buffer(0)
+            except ValueError:
+                continue
+            if poly.is_empty or poly.area < 1:
+                continue
+            hits = [blds[i]["_poly"] for i in tree_query(poly)]
+            over = sum(poly.intersection(h).area for h in hits)
+            if over < 0.4 * poly.area:
+                b["_poly"] = poly
                 blds.append(b)
                 grid.add(b)
+                index_add(poly, len(blds) - 1)
                 k += 1
         counts[src] = k
     add([dict(rings=rings_of(f)) for f in zbg(99) if rings_of(f)], "zabaged")

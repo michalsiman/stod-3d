@@ -103,7 +103,7 @@ hledání, seznam a karta s detailem a zdroji. Volby se pamatují v prohlížeč
 ## Přegenerování dat
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install numpy pillow requests pyproj
+python3 -m venv .venv && .venv/bin/pip install numpy pillow requests pyproj scipy shapely
 .venv/bin/python tools/build_data.py            # použije cache/
 .venv/bin/python tools/build_data.py --refresh  # stáhne vše znovu
 ```

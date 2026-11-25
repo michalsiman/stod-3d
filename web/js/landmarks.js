@@ -226,6 +226,29 @@ function krizovyVrch() {
 
 const LANDMARKS = [krizovyVrch];
 
+/**
+ * Barvy a výšky vybraných budov podle veřejně dostupných fotografií (Wikimedia Commons – jen předloha).
+ * at = bod v budově; radius + kinds = všechny budovy daného druhu v okolí (areál).
+ * wall / roof / plinth = barvy fasády, střechy a soklu (plinthH = výška soklu / přízemí v jiné barvě),
+ * eave / ridge / shape / flat = oprava tvaru, kde RÚIAN uvádí málo podlaží.
+ */
+export const FACADES = [
+  // novorenesanční radnice, nám. ČSA: světle šedobéžová s pásovou bosáží, červená taška, přízemí + patro
+  { name: 'Městský úřad', at: [-222, -1069], wall: 0xdcd9c3, roof: 0xa83c2c, plinth: 0xc6c2aa, plinthH: 1.0, eave: 9.2, ridge: 13.2, shape: 'hip' },
+  // stará škola, Komenského nám.: světle zelenkavá, bílé šambrány, červená střecha s vikýři, dvě patra
+  { name: 'ZŠ Komenského náměstí', at: [-112, -1033], wall: 0xc3cfb2, roof: 0xb8432f, plinth: 0xaebb9e, plinthH: 0.7, eave: 8.4, ridge: 12.4, shape: 'hip' },
+  // nová škola, Hradecká: bílošedá s cihlově červenými plochami, červená valbová střecha
+  { name: 'ZŠ Hradecká', at: [-706, -1072], wall: 0xe6e3dc, roof: 0xc1532f, plinth: 0xc0573f, plinthH: 0.8, eave: 9.0, ridge: 13.6, shape: 'hip' },
+  { name: 'ZŠ Hradecká – křídlo', at: [-690, -1075], wall: 0xe6e3dc, roof: 0xc1532f, plinth: 0xc0573f, plinthH: 0.8 },
+  // nemocnice: žlutá, oranžové přízemí, ploché střechy
+  { name: 'Stodská nemocnice', at: [-955, -830], radius: 70, kinds: ['civic'], wall: 0xe8d35c, plinth: 0xd8772f, plinthH: 1.7, flat: true },
+  // hasičská zbrojnice, U Elektrárny 266: bílá, růžové šambrány, tmavě hnědá taška
+  { name: 'Hasičská zbrojnice', at: [-307, -960], wall: 0xefebe3, roof: 0x6b4a3c, plinth: 0xd8cfc6, plinthH: 0.5 },
+  // kulturní dům: béžový, kamenný obklad přízemí, červená taška; vyšší část se třemi podlažími
+  { name: 'Kulturní dům', at: [-769, -1228], wall: 0xd9d1be, roof: 0xb9452f, plinth: 0xd9d1be, plinthH: 0.4, eave: 6.6, ridge: 10.2 },
+  { name: 'Kulturní dům – vyšší část', at: [-788, -1207], wall: 0xd9d1be, roof: 0xb9452f, plinth: 0x8a6e52, plinthH: 3.0, eave: 9.0, ridge: 13.2, shape: 'hip' },
+];
+
 /** Vrátí { group, skip, keepOut } – skip = indexy budov, které landmark nahrazuje, keepOut(x, z, r) = bez stromů. */
 export function createLandmarks({ buildings }) {
   const group = new THREE.Group();

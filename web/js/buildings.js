@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { patch } from './glsl.js';
 import { NIGHT } from './night.js';
+import { FACADES } from './landmarks.js';
 
 // Fasády: krémová, světle žlutá, bílá, okrová, pískově růžová, šedá
 const PLASTER = [0xf2ead8, 0xf6efdc, 0xf7f4ec, 0xeedcae, 0xe8d0b8, 0xe2dfd6, 0xf2e2c0, 0xdcd4c4]
@@ -98,7 +99,7 @@ vec3 windowGlow(){
 const ROOF_GLSL = /* glsl */ `
 varying vec3 vRoof;   // u podél okapu, v po spádu [m], typ krytiny
 vec3 roofCourses(vec3 c){
-  if (vRoof.z > 4.5) return c;
+  if (abs(vRoof.z - 5.) < .5) return c;
   float t = fract(vRoof.y / .34);
   float k = 1. - .13 * smoothstep(.78, .97, t);
   float px = fwidth(vRoof.y);
@@ -215,8 +216,29 @@ export function createBuildings({ buildings, world, skip }) {
   };
   const P = (x, z, y) => [x, y, z];
 
-  buildings.forEach((b, idx) => {
+  // barvy a tvary podle fotografií (landmarks.js FACADES): index budovy → úprava
+  const ROOF_COL = [0xc45c40, 0x8c5c46, 0x585c64, 0x969694, 0xc8ccce, 0x78766f].map((c) => new THREE.Color(c));
+  const facade = new Map();
+  FACADES.forEach((f) => {
+    buildings.forEach((b, i) => {
+      const r = b.rings[0];
+      let hit = pointIn(f.at[0], f.at[1], r);
+      if (!hit && f.radius) {
+        let cx = 0, cz = 0;
+        for (const p of r) { cx += p[0]; cz += p[1]; }
+        hit = Math.hypot(cx / r.length - f.at[0], cz / r.length - f.at[1]) < f.radius && (!f.kinds || f.kinds.includes(b.k));
+      }
+      if (hit && !facade.has(i)) {
+        if (f.roof !== undefined && f.roofIdx === undefined) { f.roofIdx = ROOF_COL.length; ROOF_COL.push(new THREE.Color(f.roof)); }
+        facade.set(i, f);
+      }
+    });
+  });
+
+  buildings.forEach((b0, idx) => {
     if (skip?.has(idx)) return;                 // nahrazeno ručním modelem (landmarks.js)
+    const fc = facade.get(idx);
+    const b = fc ? { ...b0, eave: fc.eave ?? b0.eave, ridge: fc.flat ? (fc.eave ?? b0.eave) + 0.2 : (fc.ridge ?? b0.ridge), shape: fc.shape ?? b0.shape } : b0;
     const rings = b.rings.map(cleanRing).filter((r) => r.length >= 3);
     if (!rings.length) return;
     const { W, R } = bucket(rings[0][0][0], rings[0][0][1]);
@@ -226,6 +248,14 @@ export function createBuildings({ buildings, world, skip }) {
       for (let i = 0; i < 3; i++) { W.col.push(col.r, col.g, col.b); W.info.push(...info); }
     };
     const wallQuad = (p1, p2, yb, yt, base, L, seed, col, info) => {
+      // sokl / přízemí v jiné barvě (FACADES)
+      if (fc?.plinth !== undefined && col !== BRICK) {
+        const yp = base + fc.plinthH;
+        if (yb < yp && yt > yp) {
+          wallQuad(p1, p2, yb, yp, base, L, seed, plinthCol, info);
+          yb = yp;
+        } else if (yt <= yp) col = plinthCol;
+      }
       const A = P(...p1, yb), B = P(...p2, yb), C = P(...p2, yt), D = P(...p1, yt);
       const a = [0, yb - base, L, seed], bb = [L, yb - base, L, seed];
       const c = [L, yt - base, L, seed], d = [0, yt - base, L, seed];
@@ -242,15 +272,19 @@ export function createBuildings({ buildings, world, skip }) {
     const eave = ground + b.eave;
     const rise = b.ridge - b.eave;
     const palette = PALETTE[kind] ?? PLASTER;
-    const col = palette[Math.floor(rnd() * palette.length)];
+    const pick = palette[Math.floor(rnd() * palette.length)];
+    const col = fc?.wall !== undefined ? new THREE.Color(fc.wall) : pick;
+    const plinthCol = fc?.plinth !== undefined ? new THREE.Color(fc.plinth) : null;
     const seed = rnd() * 100;
     const info = [kind, b.eave];
-    const type = kind === KIND.greenhouse ? 4 : (b.roof ?? 0);
+    const type = fc?.roofIdx ?? (kind === KIND.greenhouse ? 4 : (b.roof ?? 0));
 
     const box = orientedBox(outer);
     const fill = Math.abs(signedArea(outer)) / box.area;
     let rects = null;
     if (rise > 0.8 && box.W >= 2.5) rects = fill > 0.8 ? [box] : decompose(outer, box);
+    // budovy z fotografií (FACADES): složitý půdorys → aspoň střecha nad opsaným obdélníkem
+    if (fc?.roofIdx !== undefined && !fc.flat && rise > 0.8 && !rects && fill > 0.55) rects = [box];
     const pitched = rects && rects.every((r) => r.W >= 2.5 && r.W < 26);
     const wallTop = pitched ? eave : eave + Math.max(0, rise) * 0.35;
 
@@ -268,7 +302,8 @@ export function createBuildings({ buildings, world, skip }) {
       const all = [...outer, ...rings.slice(1).flat()];
       for (const [i, j, k] of tris) {
         const [a, bb, c] = [all[i], all[j], all[k]];
-        roofTri(P(...a, wallTop), P(...bb, wallTop), P(...c, wallTop), [a[0], a[1], 5], [bb[0], bb[1], 5], [c[0], c[1], 5]);
+        const ft = fc?.roofIdx !== undefined && !fc.flat ? fc.roofIdx : 5;
+        roofTri(P(...a, wallTop), P(...bb, wallTop), P(...c, wallTop), [a[0], a[1], ft], [bb[0], bb[1], ft], [c[0], c[1], ft]);
       }
       return;
     }
@@ -346,8 +381,7 @@ export function createBuildings({ buildings, world, skip }) {
     });
   });
 
-  // stylizované plné barvy: omítka z palety, střecha podle krytiny (z ortofota)
-  const ROOF_COL = [0xc45c40, 0x8c5c46, 0x585c64, 0x969694, 0xc8ccce, 0x78766f].map((c) => new THREE.Color(c));
+  // stylizované plné barvy: omítka z palety, střecha podle krytiny (z ortofota), ROOF_COL viz výše
   const wm = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   // okna: ve dne sklo s rámem, v noci část svítí
   wm.onBeforeCompile = (sh) => {
@@ -383,7 +417,7 @@ export function createBuildings({ buildings, world, skip }) {
     wg.setAttribute('aInfo', new THREE.Float32BufferAttribute(W.info, 2));
     const rc = new Float32Array(R.pos.length);
     for (let i = 0; i < R.roof.length / 3; i++) {
-      const c = ROOF_COL[Math.min(5, Math.round(R.roof[i * 3 + 2]))];
+      const c = ROOF_COL[Math.min(ROOF_COL.length - 1, Math.round(R.roof[i * 3 + 2]))];
       // mírná variace odstínu po střechách, ať to není jednotvárné
       const k = 0.94 + 0.12 * ((Math.floor(i / 6) * 0.618) % 1);
       rc[i * 3] = c.r * k; rc[i * 3 + 1] = c.g * k; rc[i * 3 + 2] = c.b * k;
