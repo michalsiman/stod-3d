@@ -21,14 +21,8 @@ function roadMaterial() {
   return material;
 }
 
-function distToSeg(px, pz, a, b) {
-  const dx = b[0] - a[0], dz = b[1] - a[1];
-  const l2 = dx * dx + dz * dz || 1;
-  const t = THREE.MathUtils.clamp(((px - a[0]) * dx + (pz - a[1]) * dz) / l2, 0, 1);
-  return [Math.hypot(px - a[0] - t * dx, pz - a[1] - t * dz), t];
-}
-
-/** Rozdělí všechny úseky do dlaždic podle středu segmentu; vrátí builder pro World. */
+/** Rozdělí všechny úseky do dlaždic podle středu segmentu; vrátí builder pro World.
+ *  bridges = prepareBridges(…) z bridges.js */
 export function createRoads({ roads, bridges, world }) {
   const T = world.T, W = world.W, H = world.H;
   const perTile = new Map();
@@ -50,24 +44,6 @@ export function createRoads({ roads, bridges, world }) {
     const key = `${ti}_${tj}`;
     if (!perTile.has(key)) perTile.set(key, []);
     perTile.get(key).push({ t: r.t, pts });
-  }
-
-  // most: výška lineárně mezi konci (s přesahem na břeh), ne po dně údolí
-  function bridgeHeight(x, z, w) {
-    for (const b of bridges) {
-      for (let i = 0; i < b.length - 1; i++) {
-        const [d, t] = distToSeg(x, z, b[i], b[i + 1]);
-        if (d < Math.max(4, w)) {
-          const [ax, az] = b[0], [bx, bz] = b[b.length - 1];
-          const ext = 4, L = Math.hypot(bx - ax, bz - az) || 1;
-          const ux = (bx - ax) / L, uz = (bz - az) / L;
-          const ha = world.heightAt(ax - ux * ext, az - uz * ext), hb = world.heightAt(bx + ux * ext, bz + uz * ext);
-          const tt = ((x - ax) * ux + (z - az) * uz + ext) / (L + 2 * ext);
-          return { h: THREE.MathUtils.lerp(ha, hb, THREE.MathUtils.clamp(tt, 0, 1)) + 0.3, seg: t };
-        }
-      }
-    }
-    return null;
   }
 
   return function build(tile, group) {
@@ -94,8 +70,8 @@ export function createRoads({ roads, bridges, world }) {
         nx *= hw * k; nz *= hw * k;
         if (i > 0) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
         const [x, z] = pts[i];
-        const br = bridgeHeight(x, z, w);
-        const y = (px, pz) => (br ? br.h : world.heightAt(px, pz)) + lift;
+        const br = bridges.at(x, z, w, dx, dz);
+        const y = (px, pz) => (br ?? world.heightAt(px, pz)) + lift;
         L.push([x + nx, y(x + nx, z + nz), z + nz]);
         C.push([x, y(x, z), z]);
         R.push([x - nx, y(x - nx, z - nz), z - nz]);

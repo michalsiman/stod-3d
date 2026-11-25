@@ -21,8 +21,9 @@ web/
   index.html, style.css, main.js   UI, obloha, ovládání, kreslení jen při změně
   js/world.js       dlaždice 1 km: zdálky síť 16 m + barevná mapa, zblízka síť 4 m + detaily
   js/terrain.js     sítě terénu a barvy ploch podle mapy pokryvu
-  js/roads.js       silnice, cesty a železnice jako barevné pásy s rovnými okraji, mosty
-  js/buildings.js   budovy: sedlové, valbové, lomené střechy, rozklad L/T/U půdorysů
+  js/roads.js       silnice, cesty a železnice jako barevné pásy s rovnými okraji
+  js/bridges.js     mosty: co po nich vede, mostovka, římsy, zábradlí, pilíře, nosníky železničních mostů
+  js/buildings.js   budovy: sedlové, valbové, lomené střechy, rozklad L/T/U půdorysů, okna a barvy podle druhu
   js/trees.js       stylizované stromy po blocích 256 m
   js/fences.js      zdi a živé ploty
   js/power.js       elektrické vedení – sloupy a vodiče
@@ -41,9 +42,19 @@ web/
 | Pokryv území | ČÚZK ZABAGED | louky, pole, lesy, sady, voda, areály, kolejiště |
 | Komunikace | ČÚZK ZABAGED | silnice I.–III. tř., ulice, cesty dle povrchu, pěšiny, železnice, mosty |
 | Pole | eAGRI LPIS | skutečné hony, směr řádků, kultura |
-| Budovy | ČÚZK RÚIAN + ZABAGED + OSM | půdorysy, podlaží, kůlny |
+| Budovy | ČÚZK RÚIAN + ZABAGED + OSM | půdorysy, podlaží, způsob využití (rodinný / bytový dům, občanská vybavenost, výroba, zemědělská stavba, garáž, skleník), obestavěný prostor |
 | Ploty | ČÚZK RÚIAN (parcely – zahrady) + ZABAGED zdi | |
 | Elektrické vedení | ČÚZK ZABAGED | |
+
+## Výšky budov a stromy
+
+- Výška budovy = DMP 1G − DMR 5G uvnitř půdorysu, bez okraje půdorysu (sousední domy, posun) a bez zelených
+  pixelů ortofota (koruny stromů nad střechou). Horní mez dává RÚIAN: nadzemní podlaží (podzemní se odečte podle
+  obestavěného prostoru) a obestavěný prostor / zastavěná plocha; co ji přesáhne, se nahradí odhadem z podlaží.
+  Stejně se odhadne výška domů, které v DMP ještě nejsou (novostavby).
+- Druh budovy (okna, barvy, vrata garáží, skleníky) podle způsobu využití z RÚIAN, jinak podle OSM.
+- Samostatné stromy se nehledají na silnicích, železnici, mostech a pod vedením (DMP tam vidí mostovku,
+  auta, trolej a sloupy).
 
 ## Zajímavosti, názvy obcí a ulic
 

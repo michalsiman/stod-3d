@@ -5,6 +5,7 @@ import { World } from './js/world.js';
 import { createBuildings } from './js/buildings.js';
 import { createTrees } from './js/trees.js';
 import { createRoads } from './js/roads.js';
+import { prepareBridges, createBridges } from './js/bridges.js';
 import { createFences } from './js/fences.js';
 import { createPower } from './js/power.js';
 import { createLabels } from './js/labels.js';
@@ -101,7 +102,8 @@ function updateSun(focus, dist) {
 const world = new World({ meta, farH: new Uint16Array(farH), farTex, scene, onChange: invalidate });
 const trees = createTrees({ buf: treesBuf, meta, world });
 const fenceLayer = createFences({ fences, world });
-world.builders.push(createRoads({ roads, bridges, world }), trees.build, fenceLayer.build, createPower({ power, world }));
+const bridgeInfo = prepareBridges(bridges, roads, world);
+world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
 scene.add(createBuildings({ buildings, world }));
@@ -126,7 +128,7 @@ let mode = 'orbit';
 
 // projížďka autem (režim „drive“)
 const drive = createDrive({
-  roads, bridges, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
+  roads, bridges: bridgeInfo, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
   onExit: () => setMode('orbit'),
 });
 window.stod3d = { drive, world, camera };      // pro ladění v konzoli

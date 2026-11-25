@@ -7,28 +7,42 @@ const PLASTER = [0xf2ead8, 0xf6efdc, 0xf7f4ec, 0xeedcae, 0xe8d0b8, 0xe2dfd6, 0xf
   .map((c) => new THREE.Color(c));
 const FARM = [0xc9c2b4, 0xb9b2a5, 0xd2c8b3, 0xa89c8a].map((c) => new THREE.Color(c));
 const BRICK = new THREE.Color(0x8a4a38);
-const KIND = { house: 0, farm: 1, shed: 2, chimney: 3 };
+// druhy podle RÚIAN (způsob využití) – musí souhlasit s tools/build_data.py
+const KIND = { house: 0, farm: 1, shed: 2, chimney: 3, flats: 4, civic: 5, industry: 6, garage: 7, greenhouse: 8 };
+const pal = (a) => a.map((c) => new THREE.Color(c));
+const PALETTE = {
+  0: PLASTER, 1: FARM, 2: FARM,
+  4: pal([0xe9e4d8, 0xdfe3e3, 0xf0e2c4, 0xd9dccf, 0xe8d6c6, 0xe4e8dc]),               // bytové domy
+  5: pal([0xf0d68a, 0xeedcae, 0xf2ead8, 0xe6c9a8, 0xf4ecd6, 0xe8d9a0]),               // úřady, školy, obchody
+  6: pal([0xbfc3c4, 0xa9b0b3, 0xc8c0ae, 0x9aa3a8, 0xd2cdc2, 0xb4b8a8]),               // haly, výroba, sklady
+  7: pal([0xd8d2c4, 0xc8c2b4, 0xe2ddd2, 0xcfc8bb]),                                  // garáže
+  8: pal([0xdfeae8]),                                                              // skleníky
+};
 
 const WINDOW_GLSL = /* glsl */ `
 uniform float uNight, uLit;
 varying vec4 vWall;   // u podél stěny [m], v nad terénem [m], délka stěny, seed
-varying vec2 vInfo;   // typ budovy (0 dům, 1 hospodářská, 2 kůlna, 3 komín), výška okapu
+varying vec2 vInfo;   // druh budovy (KIND v buildings.js), výška okapu
 // okno pod bodem fasády: x = sklo (1), y = rám (1), z = náhodné číslo okna, w = výška ve skle (0–1)
 vec4 windowAt(){
   int kind = int(vInfo.x + .5);
-  if (kind >= 2) return vec4(0.);
+  if (kind == 2 || kind == 3 || kind >= 7) return vec4(0.);
   float u = vWall.x, v = vWall.y, L = vWall.z, seed = vWall.w, eaveH = vInfo.y;
-  float spacing = kind == 0 ? 3.1 : 4.;
-  float ww = kind == 0 ? 1.0 : .8, wh = kind == 0 ? 1.25 : .6;
-  float floorH = 2.85;
-  float nf = kind == 0 ? max(1., floor((eaveH - .2) / 2.6)) : 1.;
+  // rozteč, šířka a výška okna, výška podlaží, parapet přízemí
+  float spacing = 3.1, ww = 1.0, wh = 1.25, floorH = 2.85, sill0 = 1.25;
+  if (kind == 1) { spacing = 4.; ww = .8; wh = .6; }
+  else if (kind == 4) { spacing = 2.9; ww = 1.45; wh = 1.45; floorH = 2.8; sill0 = 1.2; }
+  else if (kind == 5) { spacing = 3.3; ww = 1.15; wh = 1.85; floorH = 3.6; sill0 = 1.15; }
+  else if (kind == 6) { spacing = 3.; ww = 2.5; wh = .9; }
+  bool multi = kind == 0 || kind == 4 || kind == 5;
+  float nf = multi ? max(1., floor((eaveH - .2) / (floorH - .25))) : 1.;
   float n = floor((L - 1.2) / spacing);
   if (n < 1. && L > 2.6) n = 1.;
   float lu = u - (L - n * spacing) * .5;
   float idx = floor(lu / spacing);
   float cx = mod(lu, spacing) - spacing * .5;
-  float fl = kind == 0 ? floor((v - .3) / floorH) : 0.;
-  float sill = kind == 0 ? .3 + fl * floorH + .95 : 2.1;
+  float fl = multi ? floor((v - .3) / floorH) : 0.;
+  float sill = multi ? .05 + fl * floorH + sill0 : (kind == 6 ? max(2.4, eaveH - 1.9) : 2.1);
   float cy = v - sill - wh * .5;
   if (idx < 0. || idx >= n || fl < 0. || fl >= nf || v > eaveH - .15) return vec4(0.);
   float r = hash12(vec2(idx + seed * 17., fl + seed * 3.));
@@ -43,7 +57,19 @@ vec4 windowAt(){
 vec3 facade(vec3 base){
   int kind = int(vInfo.x + .5);
   if (kind == 3) return base;
-  if (kind <= 1 && vWall.y < .55) base *= .8;
+  if (kind == 8) {                     // skleník: světlé sklo v bílém rastru
+    vec2 g = abs(fract(vec2(vWall.x / 1.2, vWall.y / .9)) - .5);
+    return max(g.x, g.y) > .45 ? vec3(.95) : mix(base, vec3(.62, .74, .72), .55);
+  }
+  if (kind == 7) {                     // garáž: vrata uprostřed kratší stěny
+    float L = vWall.z, dw = min(2.6, L - .8);
+    if (L > 2.2 && L < 7.5 && abs(vWall.x - L * .5) < dw * .5 && vWall.y < 2.15) {
+      float rib = step(.82, fract(vWall.y / .32));
+      return mix(vec3(.72, .71, .68), vec3(.55, .54, .52), rib * .6);
+    }
+    return base;
+  }
+  if ((kind <= 1 || kind == 4 || kind == 5) && vWall.y < .55) base *= .8;
   // zdálky (okno menší než pár pixelů) jen lehce ztmavená omítka, jinak moaré
   float px = max(fwidth(vWall.x), fwidth(vWall.y));
   float vis = 1. - smoothstep(.09, .3, px);
@@ -62,7 +88,7 @@ vec3 windowGlow(){
   vec4 w = windowAt();
   if (w.x < .5) return vec3(0.);
   int kind = int(vInfo.x + .5);
-  float frac = kind == 0 ? uLit : uLit * .25;
+  float frac = (kind == 0 || kind == 4) ? uLit : uLit * .25;
   if (w.z > frac) return vec3(0.);
   vec3 c = mix(vec3(1., .72, .38), vec3(1., .85, .6), fract(w.z * 7.13));
   return c * uNight * (1.1 + .6 * fract(w.z * 3.7));
@@ -209,15 +235,16 @@ export function createBuildings({ buildings, world }) {
 
     const outer = rings[0];
     const rnd = rand(idx * 7919 + 13);
-    const kind = KIND[{ house: 'house', farm: 'farm', shed: 'shed' }[b.k] ?? 'house'];
+    const kind = KIND[b.k] ?? KIND.house;
     const ground = b.base;
     const base = ground - 0.4;
     const eave = ground + b.eave;
     const rise = b.ridge - b.eave;
-    const col = (kind === 0 ? PLASTER : FARM)[Math.floor(rnd() * (kind === 0 ? PLASTER.length : FARM.length))];
+    const palette = PALETTE[kind] ?? PLASTER;
+    const col = palette[Math.floor(rnd() * palette.length)];
     const seed = rnd() * 100;
     const info = [kind, b.eave];
-    const type = b.roof ?? 0;
+    const type = kind === KIND.greenhouse ? 4 : (b.roof ?? 0);
 
     const box = orientedBox(outer);
     const fill = Math.abs(signedArea(outer)) / box.area;
@@ -248,7 +275,7 @@ export function createBuildings({ buildings, world }) {
     const shape = rects.length === 1 ? (b.shape || 'gable') : (b.shape === 'hip' ? 'hip' : 'gable');
     const maxW = Math.max(...rects.map((r) => r.W));
     const slope = Math.min(rise / (maxW / 2), 1.4);
-    const o = kind === 2 ? 0.25 : 0.45;
+    const o = (kind === KIND.shed || kind === KIND.garage || kind === KIND.greenhouse) ? 0.25 : 0.45;
 
     rects.forEach((r, ri) => {
       const hw = r.W / 2, hl = r.L / 2;

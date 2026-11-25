@@ -309,6 +309,9 @@ def roof_class(m, sl):
     if ORTHO is None:
         return int(rng.choice([0, 0, 0, 1, 2, 3]))
     px = ORTHO[sl][m].astype(np.float32)
+    green = (2 * px[:, 1] - px[:, 0] - px[:, 2]) > 24
+    if (~green).sum() >= 8:
+        px = px[~green]
     if len(px) < 8:
         return 0
     lum = px.mean(axis=1)
@@ -471,7 +474,7 @@ def build_vectors():
     power = [lpts(p) for p in paths_of(zbg(88))]
     (OUT / "power.json").write_text(json.dumps(power, separators=(",", ":")))
     log(f"  {len(roads)} úseků komunikací, {len(bridges)} mostů, {len(power)} vedení")
-    return roads
+    return roads, bridges, power
 
 
 def build_fences(cv):
@@ -580,13 +583,119 @@ def roof_shape(o, eave, ridge, ndsm):
     return "gable"
 
 
+
+# RÚIAN – způsob využití stavebního objektu (číselník CE_ZPUSOB_VYUZITI_OBJEKTU) → druh pro vykreslení
+USE_KIND = {1: "industry", 2: "house", 3: "house", 4: "farm", 5: "civic", 6: "flats", 7: "house", 8: "house",
+            9: "civic", 10: "civic", 11: "civic", 12: "industry", 13: "farm", 14: "civic", 15: "civic",
+            16: "shed", 17: "shed", 18: "garage", 19: "shed", 20: "civic", 21: "greenhouse"}
+OSM_KIND = {"shed": "shed", "hut": "shed", "carport": "shed", "garage": "garage", "garages": "garage",
+            "greenhouse": "greenhouse", "barn": "farm", "farm_auxiliary": "farm", "cowshed": "farm",
+            "stable": "farm", "industrial": "industry", "warehouse": "industry", "apartments": "flats",
+            "church": "civic", "chapel": "civic", "school": "civic", "public": "civic", "retail": "civic",
+            "commercial": "civic", "civic": "civic", "train_station": "civic", "office": "civic"}
+LOW_KINDS = ("shed", "garage", "greenhouse")
+
+
+def building_kind(b, area):
+    if b.get("shed"):
+        return "shed"
+    k = USE_KIND.get(b.get("use")) or OSM_KIND.get(b.get("osmkind") or "")
+    if k:
+        if k == "house" and (b.get("flats") or 0) >= 4:
+            return "flats"
+        return k
+    return "farm" if area > 220 and not b.get("cp") else "house"
+
+
+def above_floors(b, kind):
+    """Nadzemní podlaží (RÚIAN počítá i podzemní – odhad podle objemu)."""
+    f = b.get("floors")
+    if not f:
+        return None
+    if kind in LOW_KINDS:
+        return 1
+    vol, area = b.get("vol"), b.get("built")
+    if f >= 2 and vol and area and vol / area < 3.0 * f - 1.5:
+        f -= 1                         # jedno podlaží je nejspíš sklep
+    return int(f)
+
+
+def building_height(b, kind, m, sl, ndsm):
+    """Okap a hřeben [m nad terénem] z povrchového modelu, hlídané údaji z RÚIAN.
+
+    Okraj půdorysu se vynechá (sousední domy, posun půdorysu), zelené pixely z ortofota také
+    (koruny stromů nad střechou); výška nesmí výrazně přesáhnout, co odpovídá počtu podlaží
+    a obestavěnému prostoru."""
+    inner = ndimage.binary_erosion(m, iterations=1)
+    if inner.sum() < max(4, 0.35 * m.sum()):
+        inner = m
+    vals = ndsm[sl][inner].astype(np.float32)
+    if ORTHO is not None and vals.size >= 8:
+        px = ORTHO[sl][inner].astype(np.int16)
+        if px.shape[0] == vals.size:
+            green = (2 * px[:, 1] - px[:, 0] - px[:, 2]) > 24
+            if (~green).sum() >= max(4, 0.3 * vals.size):
+                vals = vals[~green]
+    fl = above_floors(b, kind)
+    fh = 3.3 if kind in ("civic", "industry", "farm") else 2.9
+    guess_e = {"shed": 2.4, "garage": 2.6, "greenhouse": 2.6}.get(kind, fh * (fl or 1) + 0.4)
+    guess_r = guess_e + (1.2 if kind in LOW_KINDS else 3.5)
+    # horní mez: podlaží + vysoká střecha, objem / plocha; kostely a sila mohou být vyšší
+    cap = None
+    if kind in LOW_KINDS:
+        cap = 5.5
+    elif fl:
+        cap = fh * fl + 8.0
+        vol, area = b.get("vol"), b.get("built")
+        if vol and area and area > 10:
+            cap = max(cap, 2.2 * vol / area + 2.0) if kind != "civic" else max(cap, 3.0 * vol / area + 4.0)
+    if vals.size < 4:
+        return guess_e, guess_r, "odhad"
+    if cap is not None:
+        ok = vals[vals <= cap + 1.0]
+        if ok.size >= max(4, 0.25 * vals.size):
+            vals = ok
+    eave, ridge = float(np.percentile(vals, 35)), float(np.percentile(vals, 92))
+    if ridge < 2.0 or ridge > 45 or (cap is not None and ridge > cap + 1.5):
+        return guess_e, guess_r, "odhad"
+    # okap: alespoň na podlaží, u nízkých podlaží ne o moc výš, než odpovídá
+    if fl:
+        eave = min(eave, fh * fl + 1.5)
+    eave = max(2.2, min(eave, ridge))
+    return round(eave, 2), round(ridge, 2), "dmp" if cap is None else "dmp+ruian"
+
+
+def no_tree_mask(roads, bridges, power):
+    """Kde nesmí stát samostatný strom: silnice, železnice, mosty, vedení (DMP tam vidí mostovku,
+    auta, trolej a sloupy)."""
+    img = Image.new("1", (W, H), 0)
+    d = ImageDraw.Draw(img)
+
+    def draw(p, w):
+        pts = [(x + W / 2, z + H / 2) for x, z in p]
+        if len(pts) >= 2:
+            d.line(pts, fill=1, width=max(1, round(w)), joint="curve")
+    for r in roads:
+        draw(r["p"], ROAD[r["t"]][0] + (5 if r["t"] == 8 else 0))
+    for p in bridges:
+        draw(p, 16)
+        for q in (p[0], p[-1]):
+            x, z = q[0] + W / 2, q[1] + H / 2
+            d.ellipse((x - 8, z - 8, x + 8, z + 8), fill=1)
+    for p in power:
+        draw(p, 3)
+    return np.array(img, dtype=bool)
+
+
 def build_buildings(cv, dmr4, ndsm, hmin):
     log("Budovy – RÚIAN + ZABAGED + OSM")
     blds, grid = [], Grid()
-    for f in arcgis("stod/ruian_budovy", f"{RUIAN}/3/query", fields="kod,cisladomovni,pocetpodlazi"):
+    for f in arcgis("stod/ruian_budovy", f"{RUIAN}/3/query", fields="kod,cisladomovni,pocetpodlazi,zpusobvyuzitikod,obestavenyprostor,zastavenaplocha,pocetbytu"):
         if rings_of(f):
             a = f["attributes"]
-            b = dict(rings=rings_of(f), floors=a.get("pocetpodlazi"), cp=a.get("cisladomovni"))
+            b = dict(rings=rings_of(f), floors=a.get("pocetpodlazi"), cp=a.get("cisladomovni"),
+                     use=a.get("zpusobvyuzitikod"), vol=a.get("obestavenyprostor"),
+                     built=a.get("zastavenaplocha"), flats=a.get("pocetbytu"))
             blds.append(b)
             grid.add(b)
     counts = {"ruian": len(blds)}
@@ -604,7 +713,7 @@ def build_buildings(cv, dmr4, ndsm, hmin):
     add(osm_buildings(), "osm")
     log("  ", counts)
 
-    out, shapes = [], {}
+    out, shapes, hsrc = [], {}, {}
     for b in blds:
         outer = b["rings"][0]
         area = abs(ring_area(outer))
@@ -614,36 +723,28 @@ def build_buildings(cv, dmr4, ndsm, hmin):
         if not res:
             continue
         m, sl = res
-        vals = ndsm[sl][m].astype(np.float32)
-        floors = b.get("floors")
-        eave, ridge = (float(np.percentile(vals, 35)), float(np.percentile(vals, 95))) if vals.size >= 4 else (0, 0)
-        guess = 3.0 * (floors or 1) + 0.5
-        if ridge < 2.0 or ridge > 45:
-            eave, ridge = guess, guess + 3.0
-        eave = max(2.2, min(eave, ridge))
+        kind = building_kind(b, area)
+        eave, ridge, src = building_height(b, kind, m, sl, ndsm)
+        hsrc[src] = hsrc.get(src, 0) + 1
         base = min(h4(x, y, dmr4) for x, y in outer)
-        ok = b.get("osmkind") or ""
-        if b.get("shed") or ok in ("shed", "garage", "garages", "carport", "greenhouse", "hut"):
-            kind = "shed"
-        elif ok in ("barn", "farm_auxiliary", "cowshed", "stable", "industrial", "warehouse") or (
-                area > 220 and not b.get("cp")):
-            kind = "farm"
-        else:
-            kind = "house"
         o = obb(outer)
         shape = roof_shape(o, eave, ridge, ndsm) if o else "gable"
         shapes[shape] = shapes.get(shape, 0) + 1
         out.append(dict(
-            k=kind, roof=roof_class(m, sl), shape=shape, cp=b.get("cp"),
+            k=kind, roof=roof_class(m, sl), shape=shape, cp=b.get("cp"), fl=above_floors(b, kind),
             base=round(base - hmin, 2), eave=round(eave, 2), ridge=round(ridge, 2),
             rings=[lpts(r) for r in b["rings"]],
         ))
     (OUT / "buildings.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+    kinds = {}
+    for o in out:
+        kinds[o["k"]] = kinds.get(o["k"], 0) + 1
     log(f"  {len(out)} budov, střechy: {shapes}")
+    log(f"  druhy: {kinds}, výška z: {hsrc}")
 
 
 # ---------------------------------------------------------------- stromy
-def build_trees(cv, ndsm):
+def build_trees(cv, ndsm, nomask):
     log("Stromy")
     allt = []
     for j in range(NY):
@@ -653,9 +754,10 @@ def build_trees(cv, ndsm):
             cls = cv.R[r0:r0 + TILE, c0:c0 + TILE]
             forest = np.isin(cls, FOREST)
             near_b = ndimage.binary_dilation(cls == LC["BUILDING"], iterations=2)
+            bad = nomask[r0:r0 + TILE, c0:c0 + TILE] | (cls == LC["RAIL"])
             h = np.where(near_b | (cls == LC["WATER"]), 0, nd)
             # samostatné stromy: lokální vrcholy
-            peaks = (h >= ndimage.maximum_filter(h, 5)) & (h > 3) & (h < 45) & ~forest
+            peaks = (h >= ndimage.maximum_filter(h, 5)) & (h > 3) & (h < 45) & ~forest & ~bad
             ys, xs = np.nonzero(peaks)
             hs = h[ys, xs]
             r = np.clip(hs * 0.22 + rng.normal(0, 0.4, hs.size), 1.2, 6.0)
@@ -666,7 +768,7 @@ def build_trees(cv, ndsm):
             gy = np.clip(np.round(gy + rng.uniform(-2, 2, gy.shape)), 0, TILE - 1).astype(int).ravel()
             gx = np.clip(np.round(gx + rng.uniform(-2, 2, gx.shape)), 0, TILE - 1).astype(int).ravel()
             h3 = ndimage.maximum_filter(h, 3)
-            ok = forest[gy, gx] & (h3[gy, gx] > 4) & (h3[gy, gx] < 45)
+            ok = forest[gy, gx] & (h3[gy, gx] > 4) & (h3[gy, gx] < 45) & ~bad[gy, gx]
             gy, gx = gy[ok], gx[ok]
             ys = np.concatenate([ys, gy])
             xs = np.concatenate([xs, gx])
@@ -752,9 +854,9 @@ def main():
     build_buildings(cv, dmr4, ndsm, hmin)
     global ORTHO
     ORTHO = None
-    roads = build_vectors()
+    roads, bridges, power = build_vectors()
     build_fences(cv)
-    starts = build_trees(cv, ndsm)
+    starts = build_trees(cv, ndsm, no_tree_mask(roads, bridges, power))
     write_tiles(cv)
     far_shape = write_far(cv, roads, dmr4, ndsm, hmin)
 

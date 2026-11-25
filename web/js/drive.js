@@ -267,7 +267,6 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   const lines = roads.map((r) => ({ t: r.t, w: WIDTH[r.t], p: r.p }));
   const roadGrid = segIndex(lines);
   const streetGrid = segIndex((streets || []).flatMap((s) => s.paths.map((p) => ({ name: s.name, p, w: 10 }))));
-  const bridgeGrid = segIndex(bridges.map((p) => ({ bridge: p, p, w: 8 })));
   const hitsBuilding = buildingIndex(buildings);
 
   let paintIdx = 0;
@@ -509,22 +508,11 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   }
   function hideTraffic() { for (const bot of bots) { bot.line = null; bot.m.car.visible = false; } }
 
-  function bridgeY(x, z) {
-    const n = nearestSeg(bridgeGrid, x, z);
-    if (!n || n.d > 5) return null;
-    const b = n.s.line.bridge;
-    const [ax, az] = b[0], [bx, bz] = b[b.length - 1];
-    const ext = 4, L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L;
-    const ha = world.heightAt(ax - ux * ext, az - uz * ext), hb = world.heightAt(bx + ux * ext, bz + uz * ext);
-    const tt = ((x - ax) * ux + (z - az) * uz + ext) / (L + 2 * ext);
-    return THREE.MathUtils.lerp(ha, hb, THREE.MathUtils.clamp(tt, 0, 1)) + 0.3;
-  }
-
   /** Povrch pod bodem: typ komunikace (nebo -1 mimo cestu) a výška jízdní plochy. */
   function surfaceAt(x, z) {
     const n = nearestSeg(roadGrid, x, z, (l) => l.t !== 8);
     const on = n && n.d <= n.s.line.w / 2 + 0.4 ? n.s.line.t : -1;
-    const br = on >= 0 ? bridgeY(x, z) : null;
+    const br = on >= 0 ? bridges.at(x, z, n.s.line.w, n.s.b[0] - n.s.a[0], n.s.b[1] - n.s.a[1]) : null;
     const y = (br ?? world.heightAt(x, z)) + (on >= 0 ? LIFT[on] : 0.02);
     return { type: on, y, seg: n };
   }
