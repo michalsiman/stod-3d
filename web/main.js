@@ -13,6 +13,7 @@ import { createRain } from './js/rain.js';
 import { createSnow } from './js/snow.js';
 import { SEASON } from './js/season.js';
 import { createToon } from './js/toon.js';
+import { createHistory } from './js/history.js';
 import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
 import { createFences } from './js/fences.js';
@@ -227,6 +228,19 @@ world.builders.push(() => traffic.refreshParked());
     snow.set(sc.checked);
     applyLight();
   });
+  // historie: terén s historickou mapou / leteckým snímkem, současné vrstvy skryté
+  const hs = document.getElementById('history');
+  const keepObj = (o) => o === sky.mesh || o.isLight || o === sun.target || o === rain.points || o === snow.points;
+  const histLayer = createHistory({ world, meta, scene, keep: keepObj });
+  const applyHist = () => {
+    histLayer.set(hs.value, invalidate);
+    world.hidden = !!hs.value;
+    traffic.setEnabled(!hs.value && document.getElementById('live-traffic').checked);
+    document.body.classList.toggle('history', !!hs.value);
+    world.update(camera);
+    invalidate();
+  };
+  hs.addEventListener('change', applyHist);
   const rc = document.getElementById('rain');
   rc.checked = opt('rain', false);
   rain.set(rc.checked, false);
@@ -602,7 +616,7 @@ renderer.setAnimationLoop(() => {
     if (SEASON.snow.value !== want) { SEASON.snow.value += Math.sign(want - SEASON.snow.value) * Math.min(Math.abs(want - SEASON.snow.value), dt * 0.5); dirty = true; }
   }
   // doprava a život: jen když je kamera dost nízko, aby šlo něco vidět (jinak se nekreslí pořád dokola)
-  if (traffic.enabled || life.active) {
+  if (!world.hidden && (traffic.enabled || life.active)) {
     const lf = mode === 'orbit' ? orbit.target : camera.position;
     const camH = camera.position.y - world.heightAt(camera.position.x, camera.position.z);
     const a = traffic.update(dt, lf, camera);

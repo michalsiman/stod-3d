@@ -41,6 +41,7 @@ export function createSnow(scene) {
   scene.add(pts);
   let on = false;
   return {
+    points: pts,
     get on() { return on; },
     set(v) { on = v; pts.visible = v; },
     update(time, camera, night, pr) {

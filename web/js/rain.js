@@ -63,6 +63,7 @@ export function createRain(scene) {
 
   let on = false;
   return {
+    points: lines,
     get on() { return on; },
     set(v, withSound = true) { on = v; lines.visible = v; if (withSound) sound(v); },
     update(time, camera, night) {

@@ -139,6 +139,16 @@ Modely jsou v `web/js/models.js` (sloučené kvádry s barvami vrcholů, vykresl
   ovál dráhy na stadionu v Luční (`TRACK_AROUND`).
 * Oplocení nemocnice (`EXTRA_FENCES`), silo u nádraží (`siloStod`) v `landmarks.js`.
 
+## Historie
+
+Výběr „Historie“ v panelu potáhne terén historickým podkladem a skryje současné vrstvy:
+`tools/build_history.py` → `web/data/hist/<rok>/<i>_<j>.jpg` (dlaždice 1024 m).
+
+* 1953 – historická ortofotomapa CENIA (GEODIS Brno, CC BY 4.0)
+* kolem 1880 – III. vojenské mapování 1:75 000 (CENIA / Laboratoř geoinformatiky UJEP)
+
+Stabilní katastr (1840) má NPÚ jen za přihlášením (token), proto není.
+
 ## Přegenerování dat
 
 ```bash

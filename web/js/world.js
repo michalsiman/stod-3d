@@ -146,6 +146,11 @@ export class World {
       if (t.detail && d > DROP_D) { this.dropDetail(t); changed = true; continue; }
       // hystereze: zapnout pod SHOW_D, vypnout až nad SHOW_D + 150 m (jinak na hranici bliká)
       const near = !!t.detail && (t.detail.visible ? d < SHOW_D + 150 : d < SHOW_D);
+      if (this.hidden) {                      // režim Historie: současný terén skrytý
+        if (t.far.visible) { t.far.visible = false; changed = true; }
+        if (t.detail?.visible) { t.detail.visible = false; changed = true; }
+        continue;
+      }
       if (t.far.visible === near) { t.far.visible = !near; changed = true; }
       if (t.detail && t.detail.visible !== near) { t.detail.visible = near; changed = true; }
       if (near) for (const hook of this.lodHooks) changed = hook(t, cam, g) || changed;

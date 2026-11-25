@@ -484,3 +484,10 @@ body.driving #help, body.driving #help-toggle, body.driving #poi-info { display:
 #map-ctl .ctl-group button + button { border-top: 1px solid rgba(255,255,255,.08); }
 body:not([data-mode="orbit"]) #map-ctl { display: none; }
 @media (max-width: 600px) { #map-ctl { right: 10px; } #map-ctl button { width: 42px; height: 42px; } }
+
+#hist-opts select { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--glass-line, rgba(255,255,255,.15));
+  background: rgba(0,0,0,.28); color: var(--text); font: inherit; font-size: 14px; }
+#hist-opts select option { color: #111; }
+
+#credits .hist-credit { display: none; }
+body.history #credits .hist-credit { display: inline; }

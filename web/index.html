@@ -95,6 +95,14 @@
           <label class="rng"><span>Denní doba</span><input type="range" id="time-min" min="0" max="1430" step="10" value="840"></label>
         </div>
       </section>
+      <section id="hist-opts">
+        <h3>Historie</h3>
+        <label class="sel"><select id="history">
+          <option value="">Současnost</option>
+          <option value="1953">1953 – letecké snímky</option>
+          <option value="1880">kolem 1880 – vojenská mapa</option>
+        </select></label>
+      </section>
       <section id="view-opts">
         <h3>Zobrazení</h3>
         <label class="tg"><input type="checkbox" id="shadows"> Stíny</label>
@@ -191,6 +199,8 @@
   </aside>
 
   <footer id="credits">
+    <span class="hist-credit">Historie: <a href="https://geoportal.gov.cz" target="_blank" rel="noopener">© CENIA</a>
+      (ortofoto 1953 GEODIS Brno, CC BY 4.0; III. vojenské mapování © Laboratoř geoinformatiky UJEP) · </span>
     Data: <a href="https://geoportal.cuzk.cz" target="_blank" rel="noopener">© ČÚZK</a>
     (DMR 5G, DMP 1G, ZABAGED, RÚIAN) ·
     <a href="https://eagri.cz/public/portal/mze/farmar/LPIS" target="_blank" rel="noopener">LPIS eAGRI</a> ·
