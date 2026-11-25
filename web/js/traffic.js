@@ -357,8 +357,10 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
 
   // preference cest podle druhu vozidla (váha při výběru odbočky a místa vzniku)
   const PREF = {
-    car: [6, 4, 2.2, 0.9, 0.25, 0.08, 0.02], truck: [9, 4, 0.5, 0.2, 0.05, 0, 0], semi: [12, 3, 0.15, 0.05, 0, 0, 0],
-    tractor: [0.4, 1.2, 0.5, 1.5, 2, 2.5, 2.5], van: [5, 4, 2.5, 1, 0.2, 0.05, 0],
+    // auta jen po silnicích a asfaltu (0 silnice I., 1 II./III., 2 ulice, 3 asfaltová cesta), ne po panelech,
+    // štěrku, polních a lesních cestách; náklaďáky a kamiony jen po silnicích; traktory i po polních cestách
+    car: [6, 4, 2.2, 0.35, 0, 0, 0], truck: [9, 4, 0, 0, 0, 0, 0], semi: [12, 3, 0, 0, 0, 0, 0],
+    tractor: [0.4, 1.2, 0.5, 1.5, 2, 2.5, 2.5], van: [5, 4, 2.5, 0.35, 0, 0, 0],
   };
   // průjezdná doprava po hlavním tahu (I/26 Plzeň – Stod – Holýšov): drží se silnice I. třídy
   const MAIN_PREF = [60, 1.5, 0.15, 0.02, 0, 0, 0];
@@ -589,13 +591,17 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     if (!groups.has(b.n)) groups.set(b.n, []);
     groups.get(b.n).push(b);
   }
+  // autobusy po hlavních silnicích: zastávka se přichytí k silnici (I.–III. tř.), do ulic jen když to jinak nejde
   const stopNode = (name) => {
     const g = groups.get(name);
     if (!g) return -1;
     const x = g.reduce((s, b) => s + b.x, 0) / g.length, z = g.reduce((s, b) => s + b.z, 0) / g.length;
-    return G.nearest(x, z, (i) => G.adj[i].some((e) => e.t <= 3));
+    const main = G.nearest(x, z, (i) => G.adj[i].some((e) => e.t <= 1), 3);
+    if (main >= 0 && Math.hypot(G.X[main] - x, G.Z[main] - z) < 120) return main;
+    const street = G.nearest(x, z, (i) => G.adj[i].some((e) => e.t <= 2));
+    return street >= 0 ? street : G.nearest(x, z, (i) => G.adj[i].some((e) => e.t <= 3), 6);
   };
-  const busCost = (e) => e.L * [1, 1.15, 1.7, 2.6, 6, 9, 14, 60][e.t];
+  const busCost = (e) => e.L * [1, 1.1, 8, 20, 200, 300, 500, 5000][e.t];
   // linky (podle zastávek; trasa = nejlevnější cesta po silnicích mezi nimi, začátek/konec na kraji mapy)
   const LINES = [
     ['Plzeň – Chotěšov – Stod – Holýšov', [[3978, -4052], 'Chotěšov, u hřbitova', 'Chotěšov, nám.', 'Chotěšov, u školy', 'Stod', [-5683, 3251]], 2],
@@ -604,7 +610,6 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     ['Chotěšov – Mantov – Losina', ['Chotěšov, žel. st.', 'Chotěšov, nám.', 'Chotěšov, Mantov, U Kovárny', 'Chotěšov, Mantov, hor.kolonie', 'Chotěšov, Losina', [4690, 2000]], 1],
     ['Stod – Ves Touškov', ['Stod, Nádražní', 'Stod', 'Ves Touškov', [-3049, -4116]], 1],
     ['Chotěšov – Týnec', ['Chotěšov, nám.', 'Chotěšov, statek', 'Týnec', [2489, -4552]], 1],
-    ['Lažany – Stod', ['Lažany', 'Stod, Lelov', 'Stod'], 1],
   ];
   const lines = [];
   for (const [name, via, count] of LINES) {
