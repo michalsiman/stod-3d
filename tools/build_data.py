@@ -971,6 +971,7 @@ def main():
     import fix_data
     fix_data.fit_buildings(fix_data.terrain())
     fix_data.fix_roads()
+    fix_data.fix_lamps()
     log(f"hotovo za {time.time() - t0:.0f} s →", OUT)
 
 

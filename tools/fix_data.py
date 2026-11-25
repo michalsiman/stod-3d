@@ -126,6 +126,55 @@ def fix_roads():
     print(f"komunikace: {len(ROAD_TYPES)} úprav typu, {len(NO_CARS)} bez aut")
 
 
+def fix_lamps():
+    """Lampy, které stojí na vozovce (nepřesná poloha v OSM), posunout na okraj – na chodník 0,7 m za
+    hranu vozovky; rameno natočit nad silnici. Původní poloha zůstává v 4. a 5. prvku."""
+    WIDTH = [8.5, 6.5, 5.0, 3.5]
+    path = DATA / "lamps.json"
+    L = json.loads(path.read_text())
+    R = [r for r in json.loads((DATA / "roads.json").read_text()) if r["t"] <= 3]
+    grid = {}
+    for r in R:
+        hw = WIDTH[r["t"]] / 2
+        for a, b in zip(r["p"], r["p"][1:]):
+            for cx in range(int(min(a[0], b[0]) // 20) - 1, int(max(a[0], b[0]) // 20) + 2):
+                for cz in range(int(min(a[1], b[1]) // 20) - 1, int(max(a[1], b[1]) // 20) + 2):
+                    grid.setdefault((cx, cz), []).append((a, b, hw))
+    moved = 0
+    for lamp in L:
+        x0, z0 = (lamp[3], lamp[4]) if len(lamp) >= 5 else (lamp[0], lamp[1])
+        x, z = x0, z0
+        for _ in range(3):                         # může stát na dvou silnicích (křižovatka)
+            hit = None
+            for a, b, hw in grid.get((int(x // 20), int(z // 20)), []):
+                dx, dz = b[0] - a[0], b[1] - a[1]
+                l2 = dx * dx + dz * dz or 1
+                t = max(0, min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2))
+                px, pz = a[0] + dx * t, a[1] + dz * t
+                d = math.hypot(x - px, z - pz)
+                if d < hw + 0.4 and (hit is None or hw + 0.4 - d > hit[0]):
+                    if d < 0.05:                   # přesně na ose: vpravo od směru
+                        L_ = math.sqrt(l2); nx, nz = -dz / L_, dx / L_
+                    else:
+                        nx, nz = (x - px) / d, (z - pz) / d
+                    hit = (hw + 0.4 - d, px, pz, nx, nz, hw)
+            if not hit:
+                break
+            _, px, pz, nx, nz, hw = hit
+            x, z = px + nx * (hw + 0.7), pz + nz * (hw + 0.7)
+            ang = math.atan2(-nz, -nx)            # rameno nad silnici
+            lamp[:3] = [round(x, 1), round(z, 1), round(ang, 3)]
+        if (x, z) != (x0, z0):
+            moved += 1
+            if len(lamp) < 5:
+                lamp += [x0, z0]
+            else:
+                lamp[3:5] = [x0, z0]
+    path.write_text(json.dumps(L, separators=(",", ":")))
+    print(f"lampy: {moved} z {len(L)} posunuto z vozovky na okraj")
+
+
 if __name__ == "__main__":
     fit_buildings(terrain())
     fix_roads()
+    fix_lamps()
