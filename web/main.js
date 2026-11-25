@@ -183,6 +183,8 @@ Object.assign(orbit, {
   enableDamping: true, dampingFactor: 0.08, screenSpacePanning: false,
   maxPolarAngle: 1.5, minDistance: 5, maxDistance: 4500, zoomToCursor: true,
 });
+// telefon: mapa se posouvá víc než prst (jeden tah přejede větší kus) a po puštění ještě dojíždí
+if (isCoarse) Object.assign(orbit, { panSpeed: 2.2, dampingFactor: 0.06 });
 const look = new PointerLockControls(camera, canvas);
 const keys = new Set();
 let mode = 'orbit';
