@@ -1,0 +1,6 @@
+# Po každé aktualizaci mapy ať prohlížeč ověří, že nemá staré skripty a data (odpověď 304 je levná).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css|json|bin|png)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

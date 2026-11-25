@@ -15,7 +15,7 @@ import { createLamps, updateLamps } from './js/lamps.js';
 import { createDrive } from './js/drive.js';
 import { createPosts } from './js/posts.js';
 import { createSigns } from './js/signs.js';
-import { createLandmarks } from './js/landmarks.js';
+import { createLandmarks, EXTRA_BRIDGES } from './js/landmarks.js';
 import { createPlaceSigns } from './js/placesigns.js';
 
 // ------------------------------------------------------------------ renderer
@@ -111,7 +111,7 @@ const landmarks = createLandmarks({ buildings });
 scene.add(landmarks.group);
 const trees = createTrees({ buf: treesBuf, meta, world, exclude: landmarks.keepOut });
 const fenceLayer = createFences({ fences, world });
-const bridgeInfo = prepareBridges(bridges, roads, world);
+const bridgeInfo = prepareBridges([...bridges, ...EXTRA_BRIDGES], roads, world);
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));

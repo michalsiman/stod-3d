@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BRIDGE_STYLES } from './landmarks.js';
 
 // Mosty: osy ze ZABAGED (bridges.json) – šířka a druh podle komunikace, která po mostě vede.
 // Výška mostovky lineárně mezi břehy (s přesahem 4 m), stejně pro silnice (roads.js) i jízdu (drive.js).
@@ -29,7 +30,9 @@ export function prepareBridges(bridges, roads, world) {
     const ux = (bx - ax) / L, uz = (bz - az) / L;
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const [x, z] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
-    return { pts, ax, az, bx, bz, L, ux, uz, box: [x0 - 12, x1 + 12, z0 - 12, z1 + 12], t: -1, w: 4 };
+    const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    const style = BRIDGE_STYLES.find((st) => Math.hypot(st.at[0] - mx, st.at[1] - mz) < 30) || null;
+    return { pts, ax, az, bx, bz, L, ux, uz, box: [x0 - 12, x1 + 12, z0 - 12, z1 + 12], t: -1, w: 4, style };
   });
   // komunikace po mostě: body blízko osy a souběžné s ní; vyhrává ta s nejdelším souběhem
   for (const b of list) {
@@ -117,8 +120,10 @@ export function createBridges({ info, world }) {
     };
 
     for (const b of list) {
-      const rail = b.t === 8, foot = b.t === 7;
-      const hw = b.w / 2 + (rail ? 0.9 : 0.5);              // polovina šířky mostovky
+      const rail = b.t === 8, foot = b.t === 7, st = b.style;
+      // polovina šířky mostovky (u stylů z fotografií i s chodníky)
+      const hw = b.w / 2 + (st?.sidewalk ?? st?.extra ?? (rail ? 0.9 : 0.5));
+      const railCol = st?.rail !== undefined ? new THREE.Color(st.rail) : (foot ? COL.wood : COL.rail);
       const thick = b.L > 30 ? 1.3 : 0.9;
       const u = [b.ux, b.uz], n = [-b.uz, b.ux];
       // staničení s krokem ≤ 2 m, i s přesahem na břehy (napojení na silnici)
@@ -137,12 +142,17 @@ export function createBridges({ info, world }) {
           const [va, vb] = sgn < 0 ? [v1, v0] : [v0, v1];
           // římsa (zvýšený okraj)
           prism(p, q, n, va, vb, ya - thick - 0.05, ya + 0.5, yb - thick - 0.05, yb + 0.5, COL.cornice);
+          if (st?.sidewalk) {                             // zvýšený chodník mezi vozovkou a zábradlím
+            const c0 = sgn * (b.w / 2 + 0.05), c1 = sgn * (hw - 0.45);
+            const [ca, cb] = sgn < 0 ? [c1, c0] : [c0, c1];
+            prism(p, q, n, ca, cb, ya, ya + 0.48, yb, yb + 0.48, COL.cornice);
+          }
           const vr = sgn * (hw - 0.18);
           if (rail) {
             // plnostěnný ocelový nosník podél koleje
             prism(p, q, n, vr - 0.12, vr + 0.12, ya - thick - 0.3, ya + 1.45, yb - thick - 0.3, yb + 1.45, COL.girder);
           } else {
-            const k = foot ? COL.wood : COL.rail;
+            const k = railCol;
             // madlo a střední tyč
             prism(p, q, n, vr - 0.04, vr + 0.04, ya + 1.3, ya + 1.38, yb + 1.3, yb + 1.38, k);
             prism(p, q, n, vr - 0.02, vr + 0.02, ya + 0.9, ya + 0.94, yb + 0.9, yb + 0.94, k);
@@ -157,14 +167,18 @@ export function createBridges({ info, world }) {
           if (rail) {
             if (i % 2 === 0) post(c, u, n, 0.12, 0.34, Y[i] - thick - 0.3, Y[i] + 1.45, COL.girder);
           } else {
-            post(c, u, n, 0.07, 0.07, Y[i] + 0.5, Y[i] + 1.38, foot ? COL.wood : COL.rail);
+            post(c, u, n, 0.07, 0.07, Y[i] + 0.5, Y[i] + 1.38, railCol);
           }
         }
       }
       // pilíře: delší mosty po ~16 m, opěry na koncích – jen kde je pod mostovkou místo
       const supports = [0, b.L];
       const np = b.L > 20 ? Math.floor(b.L / 16) : 0;
-      for (let k = 1; k <= np; k++) supports.push(b.L * k / (np + 1));
+      for (let k = 1; k <= np; k++) {
+        const s = b.L * k / (np + 1);
+        if (!st?.span || s < st.span[0] * b.L - 2 || s > st.span[1] * b.L + 2) supports.push(s);
+      }
+      if (st?.span) supports.push(st.span[0] * b.L, st.span[1] * b.L);   // pilíře pod patkami oblouku
       supports.forEach((s, k) => {
         const c = [b.ax + b.ux * s, b.az + b.uz * s];
         const top = info.deckAtS(b, s) - thick;
@@ -174,6 +188,51 @@ export function createBridges({ info, world }) {
         const end = k < 2;
         post(c, u, n, end ? 1.8 : 1.1, 2 * hw + (end ? 0.6 : -0.4), g - 1.5, top, COL.deck);
       });
+      if (st?.type === 'arch') archBridge(b, st, hw, u, n);
+      if (st?.type === 'truss') trussBridge(b, st, hw, u, n);
+    }
+    // ocelové oblouky se závěsy po obou stranách vozovky (silniční most přes Radbuzu)
+    function archBridge(b, st, hw, u, n) {
+      const k = new THREE.Color(st.color), s0 = st.span[0] * b.L, s1 = st.span[1] * b.L, N = 28;
+      const at = (s) => [b.ax + b.ux * s, b.az + b.uz * s];
+      for (const sgn of [-1, 1]) {
+        const v = sgn * (b.w / 2 + 0.35);
+        let prev = null;
+        for (let i = 0; i <= N; i++) {
+          const t = i / N, s = s0 + (s1 - s0) * t;
+          const y = info.deckAtS(b, s) + 0.45 + st.rise * 4 * t * (1 - t);
+          const c = at(s);
+          if (prev) prism(prev.c, c, n, v - 0.28, v + 0.28, prev.y - 0.32, prev.y + 0.32, y - 0.32, y + 0.32, k);
+          prev = { c, y };
+        }
+        // závěsy
+        for (let s = s0 + 3; s < s1 - 2; s += 3) {
+          const t = (s - s0) / (s1 - s0), y = info.deckAtS(b, s) + 0.45 + st.rise * 4 * t * (1 - t);
+          const c = at(s);
+          post([c[0] + n[0] * v, c[1] + n[1] * v], u, n, 0.07, 0.07, info.deckAtS(b, s) + 0.4, y, k);
+        }
+      }
+    }
+    // zelená ocelová příhradová lávka s horním pásem do oblouku
+    function trussBridge(b, st, hw, u, n) {
+      const k = new THREE.Color(st.color), N = Math.max(6, Math.round(b.L / 2));
+      const at = (s) => [b.ax + b.ux * s, b.az + b.uz * s];
+      for (const sgn of [-1, 1]) {
+        const v = sgn * (hw - 0.05);
+        const pt = [];
+        for (let i = 0; i <= N; i++) {
+          const t = i / N, s = b.L * t, d = info.deckAtS(b, s);
+          pt.push({ c: at(s), d, top: d + 1.3 + st.rise * 4 * t * (1 - t) });
+        }
+        for (let i = 0; i < N; i++) {
+          const A = pt[i], B = pt[i + 1];
+          prism(A.c, B.c, n, v - 0.12, v + 0.12, A.top - 0.2, A.top, B.top - 0.2, B.top, k);      // horní pás
+          prism(A.c, B.c, n, v - 0.12, v + 0.12, A.d - 0.1, A.d + 0.35, B.d - 0.1, B.d + 0.35, k); // dolní pás
+          const [lo, hi] = i % 2 ? [A, B] : [B, A];                                                // diagonála
+          prism(lo.c, hi.c, n, v - 0.05, v + 0.05, lo.d + 0.3, lo.d + 0.45, hi.top - 0.2, hi.top - 0.05, k);
+        }
+        for (const P of pt) post([P.c[0] + n[0] * v, P.c[1] + n[1] * v], u, n, 0.1, 0.1, P.d, P.top, k);
+      }
     }
     if (!pos.length) return;
     const g = new THREE.BufferGeometry();

@@ -224,7 +224,176 @@ function krizovyVrch() {
   return { at: [2909, 1389], radius: 18, geo, keepOut };
 }
 
-const LANDMARKS = [krizovyVrch];
+
+// Sada pomůcek pro stavbu v rámci (počátek O, osa u, kolmice v na „jih“) – vrací trojúhelníky s barvami.
+function kit(O, u) {
+  const v = [-u[1], u[0]];
+  const P = (uu, vv, y) => [O[0] + u[0] * uu + v[0] * vv, y, O[1] + u[1] * uu + v[1] * vv];
+  const parts = [];
+  const col = (geo, c) => {
+    const k = new THREE.Color(c), n = geo.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a[i * 3] = k.r; a[i * 3 + 1] = k.g; a[i * 3 + 2] = k.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
+    if (geo.attributes.uv) geo.deleteAttribute('uv');
+    if (geo.attributes.normal) geo.deleteAttribute('normal');
+    if (geo.index) geo = geo.toNonIndexed();
+    parts.push(geo);
+  };
+  const tris = (list, c) => {
+    const pos = [], cols = [], k = new THREE.Color(c);
+    for (const t of list) for (const q of t) { pos.push(...q); cols.push(k.r, k.g, k.b); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    parts.push(g);
+  };
+  const quad = (a, b, c, d) => [[a, b, c], [a, c, d]];
+  const basis = (m) => m.makeBasis(new THREE.Vector3(u[0], 0, u[1]), new THREE.Vector3(0, 1, 0), new THREE.Vector3(v[0], 0, v[1]));
+  const box = (u0, u1, v0, v1, y0, y1, c) => {
+    const g = new THREE.BoxGeometry(u1 - u0, y1 - y0, v1 - v0);
+    const m = basis(new THREE.Matrix4()), c0 = P((u0 + u1) / 2, (v0 + v1) / 2, (y0 + y1) / 2);
+    m.setPosition(c0[0], c0[1], c0[2]);
+    col(g.applyMatrix4(m), c);
+  };
+  // libovolná geometrie (osa Y nahoru) posazená do bodu rámce, natočená podle osy u
+  const place = (g, uu, vv, y, c, rot = 0) => {
+    const m = basis(new THREE.Matrix4()).multiply(new THREE.Matrix4().makeRotationY(rot));
+    const c0 = P(uu, vv, y);
+    m.setPosition(c0[0], c0[1], c0[2]);
+    col(g.applyMatrix4(m), c);
+  };
+  const onWall = (shape, a, n, y, off, c) => {
+    const nw = [u[0] * n[0] + v[0] * n[1], u[1] * n[0] + v[1] * n[1]];
+    const sd = new THREE.Vector3(nw[1], 0, -nw[0]);
+    const m = new THREE.Matrix4().makeBasis(sd, new THREE.Vector3(0, 1, 0), new THREE.Vector3(nw[0], 0, nw[1]));
+    const q = P(a[0], a[1], y);
+    m.setPosition(q[0] + nw[0] * off, q[1], q[2] + nw[1] * off);
+    col(new THREE.ShapeGeometry(shape, 10).applyMatrix4(m), c);
+  };
+  const arch = (w, h) => {
+    const sh = new THREE.Shape();
+    sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(w / 2, h - w / 2);
+    sh.absarc(0, h - w / 2, w / 2, 0, Math.PI, false); sh.lineTo(-w / 2, 0);
+    return sh;
+  };
+  const halfMoon = (w) => { const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.absarc(0, 0, w / 2, 0, Math.PI, false); sh.lineTo(-w / 2, 0); return sh; };
+  const rect = (w, h) => { const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(w / 2, h); sh.lineTo(-w / 2, h); sh.lineTo(-w / 2, 0); return sh; };
+  const circle = (r) => { const sh = new THREE.Shape(); sh.absarc(0, r, r, 0, Math.PI * 2, false); return sh; };
+  const cross = (uu, vv, y, h, c) => {
+    box(uu - 0.06, uu + 0.06, vv - 0.06, vv + 0.06, y, y + h, c);
+    box(uu - 0.06, uu + 0.06, vv - h * 0.28, vv + h * 0.28, y + h * 0.62, y + h * 0.72, c);
+  };
+  const done = () => {
+    const geo = mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)));
+    geo.computeVertexNormals();
+    return geo;
+  };
+  return { P, v, tris, quad, box, place, onWall, arch, halfMoon, rect, circle, cross, done };
+}
+
+/**
+ * Kostel sv. Máří Magdalény ve Stodě – empírový, okrově žlutý s bílými lizénami, červená taška,
+ * velká půlkruhová (termální) okna pod římsou, dole menší obloukové; věž uprostřed průčelí s hodinami
+ * a zelenou měděnou jehlancovou střechou. Půdorys RÚIAN: loď 37,5 × 20 m, mělký presbytář na východě.
+ */
+function kostelStod() {
+  const O = [-154.1, -731.7], u = [0.87894, -0.47694];
+  const K = kit(O, u), { box, tris, quad, P, onWall, arch, halfMoon, rect, circle, cross, place } = K;
+  const C = { wall: 0xe9c983, trim: 0xf4ecd8, roof: 0xb0503a, plinth: 0xb8a37a, glass: 0x2b3238, copper: 0x7fae96, gold: 0xd4a640, door: 0x5a3e2c };
+  const L = 37.5, V0 = -9, V1 = 11, VC = 1, E = 11.5, R = 18.5;
+  box(0, L, V0, V1, 0, E, C.wall);
+  box(-0.15, L + 0.1, V0 - 0.15, V1 + 0.15, 0, 0.9, C.plinth);
+  box(-0.3, L + 0.25, V0 - 0.3, V1 + 0.3, E - 0.55, E, C.trim);                 // hlavní římsa
+  // lizény po stranách a na nárožích
+  for (const uu of [0.6, 7.5, 15, 22.5, 30, L - 0.6]) for (const vv of [V0, V1]) box(uu - 0.45, uu + 0.45, vv - 0.12, vv + 0.12, 0.9, E - 0.55, C.trim);
+  // střecha: sedlová nad lodí, nad presbytářem valba
+  const o = 0.6, re = E - 0.4;
+  tris([...quad(P(-o, V1 + o, re), P(L - (V1 - V0) / 2, V1 + o, re), P(L - (V1 - V0) / 2, VC, R), P(-o, VC, R)),
+    ...quad(P(L - (V1 - V0) / 2, V0 - o, re), P(-o, V0 - o, re), P(-o, VC, R), P(L - (V1 - V0) / 2, VC, R)),
+    [P(L - (V1 - V0) / 2, V1 + o, re), P(L + o, V1 + o, re), P(L - (V1 - V0) / 2, VC, R)],
+    [P(L + o, V0 - o, re), P(L - (V1 - V0) / 2, V0 - o, re), P(L - (V1 - V0) / 2, VC, R)],
+    [P(L + o, V1 + o, re), P(L + o, V0 - o, re), P(L - (V1 - V0) / 2, VC, R)]], C.roof);
+  tris([[P(-0.02, V0, E), P(-0.02, V1, E), P(-0.02, VC, R - 0.3)]], C.wall);    // štít průčelí
+  // okna lodi: půlkruhová nahoře, obloukové dole
+  for (const uu of [4, 11.2, 18.7, 26.2, 33.4]) for (const [vv, n] of [[V1, [0, 1]], [V0, [0, -1]]]) {
+    onWall(halfMoon(4.2), [uu, vv], n, 7.6, 0.03, C.trim);
+    onWall(halfMoon(3.6), [uu, vv], n, 7.75, 0.05, C.glass);
+    onWall(arch(1.3, 2.6), [uu, vv], n, 2.4, 0.03, C.trim);
+    onWall(arch(1.0, 2.3), [uu, vv], n, 2.55, 0.05, C.glass);
+  }
+  // presbytář (mělký, užší) na východě
+  box(L, L + 2.2, -3.4, 5.2, 0, E - 1.5, C.wall);
+  tris([...quad(P(L, -3.8, E - 1.6), P(L + 2.5, -3.8, E - 1.6), P(L + 2.5, 0.9, E + 1.5), P(L, 0.9, E + 1.5)),
+    ...quad(P(L + 2.5, 5.6, E - 1.6), P(L, 5.6, E - 1.6), P(L, 0.9, E + 1.5), P(L + 2.5, 0.9, E + 1.5))], C.roof);
+  // věž uprostřed průčelí: 6,8 × 6,8 m, mírně předsazená, dřík do 27 m
+  const TU0 = -0.8, TU1 = 6.0, TV0 = VC - 3.4, TV1 = VC + 3.4, TH = 27;
+  box(TU0, TU1, TV0, TV1, 0, TH, C.wall);
+  box(TU0 - 0.15, TU1 + 0.15, TV0 - 0.15, TV1 + 0.15, 0, 0.9, C.plinth);
+  for (const y of [E - 0.5, 19.5, TH - 0.5]) box(TU0 - 0.2, TU1 + 0.2, TV0 - 0.2, TV1 + 0.2, y, y + 0.5, C.trim);
+  for (const [uu, vv] of [[TU0, TV0], [TU0, TV1], [TU1, TV0], [TU1, TV1]]) box(uu - 0.35, uu + 0.35, vv - 0.35, vv + 0.35, 0.9, TH - 0.5, C.trim);
+  // portál, okna věže, hodiny na třech stranách
+  onWall(arch(2.6, 4.6), [TU0, VC], [-1, 0], 0.4, 0.03, C.trim);
+  onWall(arch(2.0, 4.1), [TU0, VC], [-1, 0], 0.4, 0.05, C.door);
+  onWall(arch(1.4, 3.0), [TU0, VC], [-1, 0], 13.5, 0.05, C.glass);
+  const faces = [[[TU0, VC], [-1, 0]], [[(TU0 + TU1) / 2, TV0], [0, -1]], [[(TU0 + TU1) / 2, TV1], [0, 1]]];
+  for (const [a, n] of faces) {
+    onWall(arch(1.1, 2.4), a, n, 20.6, 0.05, C.glass);
+    onWall(circle(1.25), a, n, 23.0, 0.03, C.trim);
+    onWall(circle(1.0), a, n, 23.25, 0.05, 0xf8f6ee);
+    onWall(rect(0.09, 0.8), a, n, 24.25, 0.07, 0x222222);
+    onWall(rect(0.6, 0.09), a, n, 24.2, 0.07, 0x222222);
+  }
+  // zelená měděná střecha věže: zvonovitá spodní část a štíhlý jehlan, koule a kříž
+  const hw = (TU1 - TU0) / 2, uc = (TU0 + TU1) / 2;
+  place(new THREE.CylinderGeometry(hw * 0.85, hw * 1.05, 1.6, 8, 1, true), uc, VC, TH + 0.8, C.copper);
+  place(new THREE.CylinderGeometry(hw * 0.55, hw * 0.85, 1.4, 8, 1, true), uc, VC, TH + 2.3, C.copper);
+  place(new THREE.ConeGeometry(hw * 0.55, 7.5, 8, 1, true), uc, VC, TH + 3 + 3.75, C.copper);
+  place(new THREE.SphereGeometry(0.3, 10, 8), uc, VC, TH + 10.9, C.gold);
+  cross(uc, VC, TH + 11.1, 1.8, C.gold);
+  return { at: [-134.8, -741.5], radius: 8, geo: K.done() };
+}
+
+/** Špitální kaple ve Stodě – osmiboká, bílá se žlutými lizénami a šambránami, červená jehlancová
+ *  střecha s černou lucernou a cibulkou. Půdorys RÚIAN ~11 m. */
+function spitalniKaple() {
+  const c0 = [-147.3, -813.6];
+  const K = kit(c0, [1, 0]), { place, box } = K;
+  const C = { wall: 0xf3f1ea, yellow: 0xe9b941, roof: 0xb5533a, lantern: 0x2b2b2b, plinth: 0xa59e90, glass: 0x2b3238 };
+  const R = 5.2, H = 7.2;
+  place(new THREE.CylinderGeometry(R, R, H, 8), 0, 0, H / 2, C.wall, Math.PI / 8);
+  place(new THREE.CylinderGeometry(R + 0.15, R + 0.15, 0.7, 8), 0, 0, 0.35, C.plinth, Math.PI / 8);
+  place(new THREE.CylinderGeometry(R + 0.3, R + 0.3, 0.45, 8), 0, 0, H - 0.2, C.yellow, Math.PI / 8);
+  // lizény v rozích a okna na stěnách
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, ax = Math.cos(a) * R * 1.0, az = Math.sin(a) * R * 1.0;
+    box(ax - 0.35, ax + 0.35, az - 0.35, az + 0.35, 0.7, H - 0.3, C.yellow);
+    const b = a + Math.PI / 8, rr = R * Math.cos(Math.PI / 8), wx = Math.cos(b) * rr, wz = Math.sin(b) * rr;
+    const sh = K.arch(1.5, 2.9), sh2 = K.arch(1.0, 2.4);
+    K.onWall(sh, [wx, wz], [Math.cos(b), Math.sin(b)], 2.2, 0.03, C.yellow);
+    K.onWall(sh2, [wx, wz], [Math.cos(b), Math.sin(b)], 2.45, 0.05, i === 4 ? 0x5a3e2c : C.glass);
+  }
+  // střecha: osmiboký jehlan s mírným podbitím, lucerna, cibulka, kříž
+  place(new THREE.ConeGeometry(R + 0.7, 4.2, 8), 0, 0, H + 2.1, C.roof, Math.PI / 8);
+  place(new THREE.CylinderGeometry(0.75, 0.75, 1.7, 8), 0, 0, H + 4.6, C.lantern);
+  place(new THREE.SphereGeometry(0.95, 10, 8), 0, 0, H + 5.9, C.lantern);
+  place(new THREE.ConeGeometry(0.35, 1.1, 8), 0, 0, H + 7.1, C.lantern);
+  K.cross(0, 0, H + 7.5, 1.1, 0x8a7a50);
+  return { at: [-146.9, -815.7], radius: 5, geo: K.done() };
+}
+
+// Mosty podle fotografií: styl se přiřadí mostu, jehož střed leží do 30 m od `at`.
+export const BRIDGE_STYLES = [
+  // silniční most I/26 přes Radbuzu: dva bílé ocelové oblouky se závěsy mezi vozovkou a chodníky
+  { at: [-187, -929], type: 'arch', color: 0xf4f4f2, rail: 0xdfe3e6, sidewalk: 3.0, span: [0.15, 0.55], rise: 6 },
+  // lávka přes Radbuzu (Wikidata): zelená ocelová příhradová konstrukce s horním pásem do oblouku
+  { at: [57.5, -999], type: 'truss', color: 0x3f8a6a, rail: 0x3f8a6a, extra: 0.9, rise: 1.4 },
+];
+// Mosty, které ZABAGED nemá (osa po pěšině přes vodu)
+export const EXTRA_BRIDGES = [
+  [[67.2, -989.0], [60.1, -999.1], [53.2, -1007.7], [48.0, -1014.0]],
+];
+
+const LANDMARKS = [krizovyVrch, kostelStod, spitalniKaple];
 
 /**
  * Barvy a výšky vybraných budov podle veřejně dostupných fotografií (Wikimedia Commons – jen předloha).
