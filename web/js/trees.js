@@ -58,7 +58,7 @@ function coniferGeo() {
   return shade(g, 0.7, 1.08);
 }
 
-export function createTrees({ buf, meta, world, exclude }) {
+export function createTrees({ buf, meta, world, exclude, extra = [] }) {
   const u16 = new Uint16Array(buf), u8 = new Uint8Array(buf);
   const W = meta.width, H = meta.height, C = meta.chunk, ncx = W / C;
   const starts = meta.tree_chunks;
@@ -123,15 +123,28 @@ export function createTrees({ buf, meta, world, exclude }) {
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   const col = new THREE.Color();
 
+  // doplňkové stromy (např. z OSM tam, kde je výškový model nevidí): [x, z, výška, poloměr]
+  const extraBy = new Map();
+  for (const t of extra) {
+    const k = Math.floor((t[1] + H / 2) / C) * ncx + Math.floor((t[0] + W / 2) / C);
+    if (!extraBy.has(k)) extraBy.set(k, []);
+    extraBy.get(k).push(t);
+  }
   function buildChunk(cx, cz) {
-    const k = cz * ncx + cx, a = starts[k], b = starts[k + 1];
-    if (!(b > a)) return null;
+    const k = cz * ncx + cx, a = starts[k] ?? 0, b = starts[k + 1] ?? 0;
+    const ex = extraBy.get(k) || [];
+    if (!(b > a) && !ex.length) return null;
     const r = rand(k * 31 + 7);
     const dec = [], con = [], trunk = [], litter = [];
-    for (let i = a; i < b; i++) {
-      const x = u16[i * 4] * 0.2 - W / 2, z = u16[i * 4 + 1] * 0.2 - H / 2;
-      const h = u8[i * 8 + 4] / 5, rad = u8[i * 8 + 5] / 10, kind = u8[i * 8 + 6];
-      if (exclude && exclude(x, z, rad)) continue;
+    for (let i = a; i < b + ex.length; i++) {
+      let x, z, h, rad, kind;
+      if (i < b) {
+        x = u16[i * 4] * 0.2 - W / 2; z = u16[i * 4 + 1] * 0.2 - H / 2;
+        h = u8[i * 8 + 4] / 5; rad = u8[i * 8 + 5] / 10; kind = u8[i * 8 + 6];
+        if (exclude && exclude(x, z, rad)) continue;
+      } else {
+        [x, z, h, rad] = ex[i - b]; kind = 0;
+      }
       const g = world.heightAt(x, z);
       q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, r() * Math.PI * 2);
       if (kind & 1) {

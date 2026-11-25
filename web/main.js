@@ -14,6 +14,7 @@ import { createSnow } from './js/snow.js';
 import { SEASON } from './js/season.js';
 import { createToon } from './js/toon.js';
 import { createHistory } from './js/history.js';
+import { createSquare, SQUARE_TREES, SQUARE_PARKING } from './js/square.js';
 import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
 import { createFences } from './js/fences.js';
@@ -137,13 +138,14 @@ function updateSun(focus, dist) {
 const world = new World({ meta, farH: new Uint16Array(farH), farTex, scene, onChange: invalidate });
 const landmarks = createLandmarks({ buildings });
 scene.add(landmarks.group);
-const trees = createTrees({ buf: treesBuf, meta, world, exclude: landmarks.keepOut });
+const trees = createTrees({ buf: treesBuf, meta, world, exclude: landmarks.keepOut, extra: SQUARE_TREES });
 const fenceLayer = createFences({ fences: [...fences, ...EXTRA_FENCES], world });
 const bridgeInfo = prepareBridges([...bridges, ...EXTRA_BRIDGES], roads, world);
 // cyklostezky (OSM) – vlastní pás v červenohnědém asfaltu
 if (bike?.paths?.length) world.builders.push(createRoads({ roads: bike.paths.map((p) => ({ t: 9, p })), bridges: bridgeInfo, world }));
 const sidewalks = createSidewalks({ roads, buildings, bridges: bridgeInfo, world });
 world.builders.push(sidewalks.build);
+world.builders.push(createSquare({ world }));        // nám. ČSA: parkoviště, park s lavičkami
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
@@ -189,7 +191,7 @@ const drive = createDrive({
 });
 
 // živá mapa: doprava, lidé, zvířata (přepínače si pamatují volbu)
-const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking, coarse: isCoarse, drive });
+const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking: [...parking, ...SQUARE_PARKING], coarse: isCoarse, drive });
 const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, bike, sidewalks, coarse: isCoarse });
 world.builders.push(() => traffic.refreshStops());
 world.builders.push(() => traffic.refreshParked());
