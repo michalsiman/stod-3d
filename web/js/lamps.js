@@ -83,7 +83,8 @@ export function createLamps({ lamps, world }) {
     const pts = new THREE.Points(pg, glowMat);
     pools.renderOrder = 1;
     pts.renderOrder = 2;
-    group.add(poles, heads, pools, pts);
+    group.add(poles, heads, pts);            // světlo na zemi kreslí nightglow.js (kopíruje terén, nad vozovkou)
+    void pools;
     // v noci viditelné, ve dne skryté (ať nestojí výkon)
     pools.userData.nightOnly = pts.userData.nightOnly = true;
   };
