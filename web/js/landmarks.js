@@ -432,7 +432,59 @@ export const EXTRA_BRIDGES = [
   [[60.5, -917.8], [64, -920], [67, -922], [69, -924], [73.5, -927]],
 ];
 
-const LANDMARKS = [krizovyVrch, kostelStod, spitalniKaple, siloStod];
+/** Budova s restaurací Lotus, nám. ČSA (podle fotek z ulice): přízemní pavilon s plochou střechou
+ *  a velkými výlohami (okrová omítka, šedá část s hernou na severovýchodě), terasa s červenými
+ *  slunečníky do náměstí; za ním třípodlažní okrový dům s plochou střechou. Půdorys RÚIAN. */
+function lotusStod() {
+  const K = kit([-279.8, -1153.6], [0.968, -0.249]), { box, onWall, rect, place } = K;
+  const C = { wall: 0xd8a96e, upper: 0xdcae72, grey: 0x8e8c87, plinth: 0x8a6f5a, trim: 0xf2efe8, glass: 0x3a4148, sign: 0x1d1d1f, gold: 0xc9a253, deck: 0x6d5e52, red: 0xc8262c, white: 0xf4f4f2 };
+  const U = 25.2, V = -22, PH = 4.2;
+  box(0, U, V, 0, 0, PH, C.wall);                                  // pavilon
+  box(-0.1, U + 0.1, V - 0.1, 0.1, 0, 0.6, C.plinth);
+  box(-0.15, U + 0.15, V - 0.15, 0.15, PH - 0.25, PH + 0.1, C.wall);   // atika
+  box(13, U + 0.05, V - 0.05, -11, 0, PH + 0.25, C.grey);         // herna (šedá)
+  // třípodlažní dům za pavilonem
+  const T0 = 0, T1 = 17, W0 = -15, W1 = -4, TH = 10.6;
+  box(T0, T1, W0, W1, PH, TH, C.upper);
+  box(T0 - 0.1, T1 + 0.1, W0 - 0.1, W1 + 0.1, TH - 0.3, TH + 0.1, C.upper);
+  for (const y of [PH + 0.9, PH + 3.7]) {
+    for (let u = 1.6; u < T1 - 1; u += 2.6) {
+      onWall(rect(1.5, 1.5), [u, W1], [0, 1], y, 0.03, C.trim);
+      onWall(rect(1.3, 1.3), [u, W1], [0, 1], y + 0.1, 0.05, C.glass);
+    }
+    for (let v = W1 - 1.8; v > W0 + 1; v -= 2.8) {
+      onWall(rect(1.5, 1.5), [T1, v], [1, 0], y, 0.03, C.trim);
+      onWall(rect(1.3, 1.3), [T1, v], [1, 0], y + 0.1, 0.05, C.glass);
+    }
+  }
+  // výlohy pavilonu: do náměstí (jih) a do ulice (východ)
+  for (let u = 2.5; u < U - 1.5; u += 3.1) {
+    onWall(rect(2.5, 2.3), [u, 0], [0, 1], 0.75, 0.03, C.trim);
+    onWall(rect(2.3, 2.1), [u, 0], [0, 1], 0.85, 0.05, C.glass);
+  }
+  for (let v = -1.8; v > -7; v -= 3.1) {
+    onWall(rect(2.5, 2.3), [U, v], [1, 0], 0.75, 0.03, C.trim);
+    onWall(rect(2.3, 2.1), [U, v], [1, 0], 0.85, 0.05, C.glass);
+  }
+  onWall(rect(1.6, 2.4), [U + 0.05, -14], [1, 0], 0.6, 0.05, C.glass);       // vchod do herny
+  onWall(rect(3.2, 1.8), [U + 0.05, -18.5], [1, 0], 1.0, 0.05, 0x26292c);
+  onWall(rect(3.6, 0.5), [U + 0.05, -15.5], [1, 0], PH - 0.8, 0.07, 0xb3322c); // nápis herny
+  // nápisy LOTUS (černé tabule)
+  onWall(rect(4.2, 1.0), [16, 0], [0, 1], PH - 1.05, 0.08, C.sign);
+  onWall(rect(2.6, 0.15), [16, 0], [0, 1], PH - 0.6, 0.1, C.gold);
+  onWall(rect(2.2, 2.4), [U, -8.6], [1, 0], 1.0, 0.08, C.sign);
+  // terasa s posezením a slunečníky
+  box(1.5, 14, 0, 5, 0, 0.55, C.deck);
+  for (const u of [3.5, 6.5, 9.5, 12.5]) {
+    place(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 6), u, 2.6, 1.75, C.white);
+    place(new THREE.ConeGeometry(1.4, 0.7, 8), u, 2.6, 3.0, C.red);
+    place(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 10), u - 0.8, 1.6, 1.3, 0x3a3a3a);
+    place(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 10), u + 0.7, 3.6, 1.3, 0x3a3a3a);
+  }
+  return { at: [-278.7, -1170.7], radius: 3, geo: K.done() };
+}
+
+const LANDMARKS = [krizovyVrch, kostelStod, spitalniKaple, siloStod, lotusStod];
 
 /**
  * Barvy a výšky vybraných budov podle veřejně dostupných fotografií (Wikimedia Commons – jen předloha).
@@ -544,6 +596,8 @@ export const FACADES = [
   // ---- Stod – domy s adresou na fotografiích
   { name: 'Komenského nám. 19', at: [-185.3, -984.1], wall: 0xd8e6d2, roof: 0x5a5754, plinth: 0xc4cfc0, plinthH: 0.8 },
   { name: 'Sokolská 433', at: [-542.5, -1266.5], wall: 0xf0e6c6, roof: 0xb24a30, plinth: 0xb8b0a0, plinthH: 0.9 },
+  // panelový dům vedle Lotusu: okrový s lodžiemi, plochá střecha
+  { name: 'nám. ČSA – panelák u Lotusu', at: [-295.0, -1160.8], wall: 0xd6b07c, flat: true },
   { name: 'nám. ČSA 69', at: [-260.0, -1043.9], wall: 0xf2f0ea, roof: 0x8a3e2c, plinth: 0xb9b6ae, plinthH: 0.5 },
   { name: 'nám. ČSA 70', at: [-245.2, -1022.9], wall: 0xe8c2b8, roof: 0x5c4a42, plinth: 0xc9a59a, plinthH: 0.9 },
   { name: 'nám. ČSA 71', at: [-237.1, -1006.0], wall: 0xd77d52, roof: 0x5c4a42, plinth: 0xb56440, plinthH: 0.9 },

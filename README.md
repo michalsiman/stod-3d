@@ -138,7 +138,7 @@ Modely jsou v `web/js/models.js` (sloučené kvádry s barvami vrcholů, vykresl
 * Sportoviště z OSM (`sport.json`, `web/js/sports.js`): hřiště podle povrchu s čarami, antukové kurty, heliport;
   ovál dráhy na stadionu v Luční (`TRACK_AROUND`).
 * Oplocení nemocnice (`EXTRA_FENCES`), silo u nádraží (`siloStod`) v `landmarks.js`.
-* Nám. ČSA (`js/square.js`): parkoviště se stáními a stromy z OSM, dlážděný park se stromky a lavičkami. Kostel ve Stodě je v noci nasvícený (`FLOODLIT` v `landmarks.js`).
+* Budova s restaurací Lotus na nám. ČSA (`lotusStod`). Nám. ČSA (`js/square.js`): parkoviště se stáními a stromy z OSM, dlážděný park se stromky a lavičkami. Kostel ve Stodě je v noci nasvícený (`FLOODLIT` v `landmarks.js`).
 
 ## Historie
 
