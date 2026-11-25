@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { SEASON, SEASON_GLSL } from './season.js';
+import { COMMON } from './glsl.js';
 
 // Sportoviště z OSM (data/sport.json): plocha podle povrchu (tráva, antuka, tartan, umělá tráva, asfalt,
 // písek), na fotbalových hřištích bílé čáry, heliport (bílý kruh s H). Položené na terén, výšky se
@@ -8,7 +10,7 @@ const LIFT = 0.36;
 // stadiony s oválnou dráhou (bod u hřiště) – Stod, Luční
 const TRACK_AROUND = [[-581, -889]];
 const SURF = {
-  grass: 0x58a043, artificial_turf: 0x3f9a4f, clay: 0xc86a3e, tartan: 0xb84a34, rubber: 0xb84a34,
+  grass: 0x5e9446, artificial_turf: 0x3f9a4f, clay: 0xc86a3e, tartan: 0xb84a34, rubber: 0xb84a34,
   asphalt: 0x6f7378, concrete: 0x9a9890, sand: 0xdcc894, paving_stones: 0x9d9a93,
 };
 
@@ -46,10 +48,33 @@ function obb(p) {
   return best;
 }
 
+/** Fotbalové hřiště stadionu (pro fotbalisty): obdélník { cx, cz, ux, uz, ha, hb } nebo null. */
+export function stadiumPitch(sport) {
+  const [x, z] = TRACK_AROUND[0];
+  const pitch = (sport || []).filter((f) => f.closed && /soccer/.test(f.sport))
+    .sort((p, q) => Math.hypot(p.p[0][0] - x, p.p[0][1] - z) - Math.hypot(q.p[0][0] - x, q.p[0][1] - z))[0];
+  return pitch ? obb(pitch.p) : null;
+}
+
 export function createSports({ sport, world }) {
   const group = new THREE.Group();
   if (!sport?.length) { group.userData.refresh = () => {}; return group; }
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -24 });
+  // přírodní tráva (atribut nat = 1) mění barvu s ročním obdobím jako louky – udržovaný trávník
+  // zůstává o něco zelenější; v zimě sníh. Umělá tráva, antuka a čáry zůstávají.
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uDoy = SEASON.doy;
+    sh.uniforms.uSnow = SEASON.snow;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float nat; varying float vNat;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNat = nat;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>\n${COMMON}\n${SEASON_GLSL}\nvarying float vNat;`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        if (vNat > .5) diffuseColor.rgb = mix(seasonGrass(diffuseColor.rgb), diffuseColor.rgb, .3);
+        diffuseColor.rgb = snowy(diffuseColor.rgb, vNat > .5 ? 1. : .9);`);
+  };
+  const natural = new Set();
   // větší plochy dřív (níž), menší navrch
   const items = sport.filter((f) => f.k !== 'helipad' && f.closed).map((f) => {
     let a = 0;
@@ -58,7 +83,8 @@ export function createSports({ sport, world }) {
   }).sort((p, q) => q.area - p.area);
 
   const build = () => {
-    const pos = [], col = [];
+    natural.clear();
+    const pos = [], col = [], nat = [];
     const y = (x, z, k) => world.heightAt(x, z) + LIFT + k * 0.015;
     const tri = (a, b, c, k, h) => {
       // dělení dlouhých hran, aby plocha kopírovala terén
@@ -69,7 +95,8 @@ export function createSports({ sport, world }) {
         tri(a, ab, ca, k, h); tri(ab, b, bc, k, h); tri(ca, bc, c, k, h); tri(ab, bc, ca, k, h);
         return;
       }
-      for (const p of [a, b, c]) { pos.push(p[0], y(p[0], p[1], h), p[1]); col.push(k.r, k.g, k.b); }
+      const nk = natural.has(k) ? 1 : 0;
+      for (const p of [a, b, c]) { pos.push(p[0], y(p[0], p[1], h), p[1]); col.push(k.r, k.g, k.b); nat.push(nk); }
     };
     const poly = (ring, k, h) => {
       const pts = ring.slice(0, -1).map(([x, z]) => new THREE.Vector2(x, z));
@@ -106,11 +133,13 @@ export function createSports({ sport, world }) {
         line(inn[i], inn[j], 0.12, white, h + 0.2); line(out[i], out[j], 0.12, white, h + 0.2);
       }
       // vnitřek oválu (tráva kolem hřiště)
-      const g = new THREE.Color(0x5f9c47);
+      const g = new THREE.Color(0x5e9446);
+      natural.add(g);
       for (let i = 1; i < inn.length - 1; i++) tri(inn[0], inn[i + 1], inn[i], g, h - 0.3);
     }
     items.forEach(({ f }, n) => {
       const c = new THREE.Color(colorOf(f));
+      if (colorOf(f) === SURF.grass && f.surface !== 'artificial_turf') natural.add(c);
       poly(f.p, c, n);
       // fotbal: pruhy trávy a bílé čáry (obrys, půlicí čára, středový kruh, pokutová území)
       const o = /soccer/.test(f.sport) && (f.surface === 'grass' || f.surface === 'artificial_turf' || !f.surface) ? obb(f.p) : null;
@@ -118,6 +147,7 @@ export function createSports({ sport, world }) {
         const P = (a, b) => [o.cx + o.ux * a - o.uz * b, o.cz + o.uz * a + o.ux * b];
         const A = o.ha - 1.5, Bh = o.hb - 1.5;
         const dark = c.clone().multiplyScalar(0.9);
+        if (natural.has(c)) natural.add(dark);
         for (let a = -A, s = 0; a < A; a += A / 6, s++) {
           if (s % 2) { tri(P(a, -Bh), P(a + A / 6, Bh), P(a + A / 6, -Bh), dark, n + 0.3); tri(P(a, -Bh), P(a, Bh), P(a + A / 6, Bh), dark, n + 0.3); }
         }
@@ -164,6 +194,7 @@ export function createSports({ sport, world }) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setAttribute('nat', new THREE.Float32BufferAttribute(nat, 1));
     g.computeVertexNormals();
     return g;
   };

@@ -6,7 +6,8 @@ import { createBuildings } from './js/buildings.js';
 import { createTrees } from './js/trees.js';
 import { createRoads } from './js/roads.js';
 import { createSidewalks } from './js/sidewalks.js';
-import { createSports } from './js/sports.js';
+import { createSports, stadiumPitch } from './js/sports.js';
+import { createFootball } from './js/football.js';
 import { createNightGlow } from './js/nightglow.js';
 import { createFarLights } from './js/farlights.js';
 import { createRain } from './js/rain.js';
@@ -160,6 +161,7 @@ const placeSigns = createPlaceSigns({ roads, buildings, places: poiData?.places,
 scene.add(placeSigns);
 world.builders.push(() => placeSigns.userData.refresh?.());
 const sports = createSports({ sport, world });
+const football = createFootball({ pitch: stadiumPitch(sport), world, scene });   // fotbal na stadionu
 scene.add(sports);
 world.builders.push(() => sports.userData.refresh());
 const roundabouts = createRoundabouts({ world });
@@ -208,7 +210,7 @@ world.builders.push(() => traffic.refreshParked());
     });
   };
   bind('live-traffic', 'traffic', (v) => { traffic.setEnabled(v); drive.setBots(!v); });
-  bind('live-people', 'people', (v) => life.setPeople(v));
+  bind('live-people', 'people', (v) => { life.setPeople(v); football.set(v); });
   bind('live-animals', 'animals', (v) => life.setAnimals(v));
   // déšť: ve výchozím stavu vypnutý; zvuk až po kliknutí (pravidla prohlížečů)
   // kreslený styl (filtr přes celý obraz)
@@ -254,7 +256,7 @@ world.builders.push(() => traffic.refreshParked());
     applyLight();
   });
 }
-window.stod3d = { drive, world, camera, orbit, signs: signLayer, placeSigns, traffic, life };      // pro ladění v konzoli
+window.stod3d = { drive, world, camera, orbit, signs: signLayer, placeSigns, traffic, life, football };      // pro ladění v konzoli
 
 // ------------------------------------------------------------------ plynulý přelet
 let anim = null;
@@ -625,7 +627,8 @@ renderer.setAnimationLoop(() => {
     const camH = camera.position.y - world.heightAt(camera.position.x, camera.position.z);
     const a = traffic.update(dt, lf, camera);
     const b = life.update(dt, lf, camera);
-    if ((a || b) && camH < 2500) dirty = true;
+    const c = !world.hidden && camH < 1500 && football.update(dt, lf);
+    if ((a || b || c) && camH < 2500) dirty = true;
   }
 
   const now = clock.elapsedTime;
