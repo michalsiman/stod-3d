@@ -401,7 +401,83 @@ const LANDMARKS = [krizovyVrch, kostelStod, spitalniKaple];
  * wall / roof / plinth = barvy fasády, střechy a soklu (plinthH = výška soklu / přízemí v jiné barvě),
  * eave / ridge / shape / flat = oprava tvaru, kde RÚIAN uvádí málo podlaží.
  */
+// ---------------------------------------------------------------- kruhové objezdy
+// Stod, Stříbrská × Plzeňská × Nádražní (podle ortofota a fotky z dronu): travnatý ostrůvek s kruhovým
+// záhonem, kolem pojížděný prstenec ze šedých žulových kostek s obrubou, bílá vodicí čára na vozovce.
+export const ROUNDABOUTS = [
+  { at: [-234.2, -1209.0], island: 10.2, apron: 12.0, road: 8.5 },
+];
+
+/** Ostrůvky objezdů; výšky podle terénu (refresh po načtení dlaždic zblízka). */
+export function createRoundabouts({ world }) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -20 });
+  const N = 64;
+  const rings = (ra) => {
+    const pos = [], col = [];
+    const [cx, cz] = ra.at;
+    const ring = (r0, r1, h0, h1, c) => {
+      const k = new THREE.Color(c);
+      for (let i = 0; i < N; i++) {
+        const a0 = (i / N) * Math.PI * 2, a1 = ((i + 1) / N) * Math.PI * 2;
+        const P = (r, a, h) => { const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; return [x, world.heightAt(x, z) + h, z]; };
+        const p00 = P(r0, a0, h0), p01 = P(r0, a1, h0), p10 = P(r1, a0, h1), p11 = P(r1, a1, h1);
+        pos.push(...p00, ...p11, ...p10, ...p00, ...p01, ...p11);
+        for (let q = 0; q < 6; q++) col.push(k.r, k.g, k.b);
+      }
+    };
+    const wall = (r, h0, h1, c) => ring(r, r, h0, h1, c);
+    const L = 0.34;                                    // výška vozovky nad terénem (roads.js)
+    ring(0, 1.2, L + 0.42, L + 0.4, 0x3f6b2e);         // střed záhonu – keře
+    ring(1.2, 3.2, L + 0.4, L + 0.3, 0x5b8a3a);
+    ring(3.2, 4.4, L + 0.3, L + 0.3, 0x8a5a3c);        // kruhový záhon (mulč, květiny)
+    ring(4.4, 4.9, L + 0.3, L + 0.3, 0xb04a5a);
+    ring(4.9, ra.island, L + 0.3, L + 0.24, 0x79a346); // trávník
+    wall(ra.island, L + 0.24, L + 0.12, 0xdedcd6);     // obruba ostrůvku
+    ring(ra.island, ra.apron - 0.25, L + 0.12, L + 0.06, 0x9d9a94);   // žulové kostky
+    ring(ra.apron - 0.25, ra.apron, L + 0.06, L + 0.06, 0xe6e4de);    // obruba prstence
+    ring(ra.apron + 0.35, ra.apron + 0.5, L + 0.025, L + 0.025, 0xf4f4f0);  // vodicí čára
+    ring(ra.apron + ra.road - 0.55, ra.apron + ra.road - 0.4, L + 0.025, L + 0.025, 0xf4f4f0);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    return g;
+  };
+  const meshes = ROUNDABOUTS.map((ra) => {
+    const m = new THREE.Mesh(rings(ra), mat);
+    m.receiveShadow = true;
+    group.add(m);
+    return [m, ra];
+  });
+  group.userData.refresh = () => {
+    for (const [m, ra] of meshes) { m.geometry.dispose(); m.geometry = rings(ra); }
+  };
+  return group;
+}
+
 export const FACADES = [
+  // okolí kruhového objezdu (fotka z dronu + ortofoto ČÚZK)
+  // TOP drogerie, Stříbrská 268: zelené přízemí, okrově žluté patro, červenohnědá taška
+  { name: 'Stříbrská 268 (drogerie)', at: [-277, -1231], wall: 0xe6c85e, roof: 0xa65539, plinth: 0x46a84a, plinthH: 3.1 },
+  // řada podél Plzeňské (jihozápad objezdu): světle lososová, obchody v přízemí
+  { name: 'U objezdu – jihozápad', at: [-261, -1204], wall: 0xe9cbbd, roof: 0xb2593e, plinth: 0xd9b6a8, plinthH: 3.0 },
+  // severně od objezdu: bílé domy s vínově červenou taškou (střešní okna)
+  { name: 'U objezdu – sever 1', at: [-240, -1251], wall: 0xf1efe9, roof: 0x7b2d3a },
+  { name: 'U objezdu – sever 2', at: [-263, -1258], wall: 0xf1efe9, roof: 0x7b2d3a },
+  // severovýchod: bílé s hnědou taškou
+  { name: 'U objezdu – severovýchod 1', at: [-200, -1258], wall: 0xf0ece4, roof: 0x744836 },
+  { name: 'U objezdu – severovýchod 2', at: [-183, -1266], wall: 0xf0ece4, roof: 0x744836 },
+  // jihovýchod: řada bílých domů s červenou taškou a vikýři
+  { name: 'U objezdu – jihovýchod 1', at: [-195, -1200], wall: 0xf5f3ef, roof: 0xc2502f, plinth: 0xdad7d0, plinthH: 0.6 },
+  { name: 'U objezdu – jihovýchod 2', at: [-212, -1185], wall: 0xf5f3ef, roof: 0xc2502f, plinth: 0xdad7d0, plinthH: 0.6 },
+  { name: 'U objezdu – jihovýchod 3', at: [-207, -1188], wall: 0xf5f3ef, roof: 0xc2502f, plinth: 0xdad7d0, plinthH: 0.6 },
+  // Plzeňská k náměstí, východní strana: krémové domy s červenohnědou taškou
+  { name: 'Plzeňská – východ 1', at: [-229, -1172], wall: 0xeadcb8, roof: 0xa5503a },
+  { name: 'Plzeňská – východ 2', at: [-229, -1148], wall: 0xeadcb8, roof: 0xa5503a },
+  { name: 'Plzeňská – východ 3', at: [-229, -1123], wall: 0xeadcb8, roof: 0xa5503a },
+  // světle zelený bytový dům s plochou střechou
+  { name: 'U objezdu – zelený dům', at: [-295, -1165], wall: 0xcfe0c2 },
   // novorenesanční radnice, nám. ČSA: světle šedobéžová s pásovou bosáží, červená taška, přízemí + patro
   { name: 'Městský úřad', at: [-222, -1069], wall: 0xdcd9c3, roof: 0xa83c2c, plinth: 0xc6c2aa, plinthH: 1.0, eave: 9.2, ridge: 13.2, shape: 'hip' },
   // stará škola, Komenského nám.: světle zelenkavá, bílé šambrány, červená střecha s vikýři, dvě patra

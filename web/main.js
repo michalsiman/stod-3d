@@ -15,7 +15,7 @@ import { createLamps, updateLamps } from './js/lamps.js';
 import { createDrive } from './js/drive.js';
 import { createPosts } from './js/posts.js';
 import { createSigns } from './js/signs.js';
-import { createLandmarks, EXTRA_BRIDGES } from './js/landmarks.js';
+import { createLandmarks, createRoundabouts, EXTRA_BRIDGES } from './js/landmarks.js';
 import { createPlaceSigns } from './js/placesigns.js';
 import { createTraffic } from './js/traffic.js';
 import { createLife } from './js/life.js';
@@ -126,6 +126,9 @@ scene.add(signLayer);
 const placeSigns = createPlaceSigns({ roads, buildings, places: poiData?.places, bridges: bridgeInfo, world });
 scene.add(placeSigns);
 world.builders.push(() => placeSigns.userData.refresh?.());
+const roundabouts = createRoundabouts({ world });
+scene.add(roundabouts);
+world.builders.push(() => roundabouts.userData.refresh());
 
 // okolí za hranou území
 {
