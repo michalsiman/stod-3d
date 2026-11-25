@@ -179,7 +179,16 @@ export function createBridges({ info, world }) {
         const s = b.L * k / (np + 1);
         if (!spans.some(([a, c]) => s > a * b.L - 2 && s < c * b.L + 2)) supports.push(s);
       }
-      for (const [a, c] of spans) supports.push(a * b.L, c * b.L);       // pilíře pod patkami oblouků
+      // pilíře pod patkami oblouků (u konců mostu stačí opěra; společná patka dvou oblouků jen jednou)
+      const stone = new Set();
+      for (const [a, c] of spans) {
+        for (const f of [a, c]) {
+          const sf = f * b.L;
+          if (sf < 5 || sf > b.L - 5 || supports.some((q) => Math.abs(q - sf) < 1)) continue;
+          supports.push(sf);
+          if (st.pier) stone.add(sf);
+        }
+      }
       supports.forEach((s, k) => {
         const c = [b.ax + b.ux * s, b.az + b.uz * s];
         const top = info.deckAtS(b, s) - thick;
@@ -187,7 +196,8 @@ export function createBridges({ info, world }) {
         for (const v of [-hw, 0, hw]) g = Math.min(g, world.heightAt(c[0] + n[0] * v, c[1] + n[1] * v));
         if (top - g < 0.6) return;
         const end = k < 2;
-        post(c, u, n, end ? 1.8 : 1.1, 2 * hw + (end ? 0.6 : -0.4), g - 1.5, top, COL.deck);
+        if (stone.has(s)) post(c, u, n, 3.2, 2 * hw - 0.6, g - 1.5, top, new THREE.Color(st.pier));   // kamenný pilíř
+        else post(c, u, n, end ? 1.8 : 1.1, 2 * hw + (end ? 0.6 : -0.4), g - 1.5, top, COL.deck);
       });
       if (st?.type === 'arch') for (const sp of spans) archBridge(b, st, sp, hw, u, n);
       if (st?.type === 'truss') trussBridge(b, st, hw, u, n);
@@ -195,6 +205,7 @@ export function createBridges({ info, world }) {
     // ocelové oblouky se závěsy po obou stranách vozovky (silniční most přes Radbuzu)
     function archBridge(b, st, span, hw, u, n) {
       const k = new THREE.Color(st.color), s0 = span[0] * b.L, s1 = span[1] * b.L, N = 28;
+      st = { ...st, rise: span[2] ?? st.rise };
       const at = (s) => [b.ax + b.ux * s, b.az + b.uz * s];
       for (const sgn of [-1, 1]) {
         const v = sgn * (b.w / 2 + 0.35);
