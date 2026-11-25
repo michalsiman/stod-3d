@@ -60,8 +60,8 @@ export function buildGraph(roads, types, cars = false) {
         const ring = ringOf(X[a], Z[a], X[b], Z[b]);
         // osa z míří na jih: proti směru hodinových ručiček na mapě ⇔ rx·dz − rz·dx < 0
         const ccw = ring ? (X[a] - ring[0]) * (Z[b] - Z[a]) - (Z[a] - ring[1]) * (X[b] - X[a]) < 0 : null;
-        if (ccw !== false) adj[a].push({ to: b, L, t: r.t, oneway: ring ? 1 : 0 });
-        if (ccw !== true) adj[b].push({ to: a, L, t: r.t, oneway: ring ? 1 : 0 });
+        if (ccw !== false) adj[a].push({ to: b, L, t: r.t, oneway: ring ? 1 : 0, svc: r.svc });
+        if (ccw !== true) adj[b].push({ to: a, L, t: r.t, oneway: ring ? 1 : 0, svc: r.svc });
       }
       a = b;
     }
@@ -756,7 +756,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     // konce sloučit: preferovat trať přes stanice (Stod) – vyber dvojici s nejvíc stanicemi blízko
     let best = null;
     for (let a = 0; a < ends.length; a++) for (let b = a + 1; b < ends.length; b++) {
-      const p = shortest(R, ends[a], ends[b], (e) => e.L);
+      const p = shortest(R, ends[a], ends[b], (e) => e.L * (!e.svc || e.svc === 'main' ? 1 : 6));   // po hlavní koleji
       if (!p) continue;
       let hits = 0;
       for (const st of railStops) if (p.some((i) => Math.hypot(R.X[i] - st.x, R.Z[i] - st.z) < 120)) hits++;

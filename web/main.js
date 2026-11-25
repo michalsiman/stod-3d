@@ -8,6 +8,7 @@ import { createRoads } from './js/roads.js';
 import { createSidewalks } from './js/sidewalks.js';
 import { createSports } from './js/sports.js';
 import { createNightGlow } from './js/nightglow.js';
+import { createFarLights } from './js/farlights.js';
 import { createRain } from './js/rain.js';
 import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
@@ -51,7 +52,7 @@ const get = (p, kind = 'json') => fetch(`data/${p}`).then((r) => {
 
 const meta = await get('meta.json');
 loaderText.textContent = 'Načítám terén, budovy a cesty…';
-const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops, bike, parking, sport] = await Promise.all([
+const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops, bike, parking, sport, rail] = await Promise.all([
   get('far_h.bin', 'bin'),
   new THREE.TextureLoader().loadAsync('data/far.png'),
   get('buildings.json'), get('roads.json'), get('bridges.json'), get('fences.json'), get('power.json'),
@@ -63,7 +64,13 @@ const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData
   fetch('data/bike.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
   fetch('data/parking.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/sport.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+  fetch('data/rail.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
 ]);
+// koleje: místo jedné osy trati (ZABAGED) jednotlivé koleje z OSM (hlavní, předjízdné, kolejiště, vlečky)
+if (rail?.length) {
+  for (let i = roads.length - 1; i >= 0; i--) if (roads[i].t === 8) roads.splice(i, 1);
+  for (const r of rail) roads.push({ t: 8, p: r.p, svc: r.s });
+}
 farTex.colorSpace = THREE.SRGBColorSpace;
 farTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 loaderText.textContent = 'Stavím scénu…';
@@ -134,6 +141,7 @@ world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBr
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
 world.builders.push(createNightGlow({ lamps, buildings, world }));
+scene.add(createFarLights({ lamps, buildings, world }));       // světla města z dálky / z výšky
 world.builders.push(createPosts({ roads, buildings, bridges: bridgeInfo, world }));
 scene.add(createBuildings({ buildings, world, skip: landmarks.skip }));
 signLayer = createSigns({ signs, buildings, roads, world });

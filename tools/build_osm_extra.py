@@ -65,6 +65,22 @@ out tags geom;""")
     print(f"{len(out)} sportovišť a heliportů")
 
 
+def rails():
+    """Jednotlivé koleje (hlavní trať, předjízdné, kolejiště, vlečky) → web/data/rail.json."""
+    bb = f"({P.S},{P.Wl},{P.N},{P.E})"
+    els = overpass("stod/osm_rail.json", f"""[out:json][timeout:60];way[railway~"^(rail|disused|abandoned)$"]{bb};out tags geom;""")
+    out = []
+    for e in els:
+        t = e.get("tags", {})
+        if t.get("railway") != "rail":
+            continue
+        g = [[round(v, 1) for v in P.local(p["lon"], p["lat"])] for p in e.get("geometry", [])]
+        if len(g) >= 2 and any(P.inside(*q) for q in g):
+            out.append(dict(p=g, s=t.get("service") or ("main" if t.get("usage") == "main" else "other")))
+    (B.OUT / "rail.json").write_text(json.dumps(out, separators=(",", ":")))
+    print(f"{len(out)} kolejí")
+
+
 def geom(g):
     pts = [[round(v, 1) for v in P.local(p["lon"], p["lat"])] for p in g if p]
     return pts if any(P.inside(*p) for p in pts) else None
@@ -112,3 +128,4 @@ def main():
 if __name__ == "__main__":
     main()
     sports()
+    rails()
