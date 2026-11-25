@@ -15,6 +15,8 @@ import { createLamps, updateLamps } from './js/lamps.js';
 import { createDrive } from './js/drive.js';
 import { createPosts } from './js/posts.js';
 import { createSigns } from './js/signs.js';
+import { createLandmarks } from './js/landmarks.js';
+import { createPlaceSigns } from './js/placesigns.js';
 
 // ------------------------------------------------------------------ renderer
 const canvas = document.getElementById('scene');
@@ -105,17 +107,22 @@ function updateSun(focus, dist) {
 
 // ------------------------------------------------------------------ svět
 const world = new World({ meta, farH: new Uint16Array(farH), farTex, scene, onChange: invalidate });
-const trees = createTrees({ buf: treesBuf, meta, world });
+const landmarks = createLandmarks({ buildings });
+scene.add(landmarks.group);
+const trees = createTrees({ buf: treesBuf, meta, world, exclude: landmarks.keepOut });
 const fenceLayer = createFences({ fences, world });
 const bridgeInfo = prepareBridges(bridges, roads, world);
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
 world.builders.push(createPosts({ roads, buildings, bridges: bridgeInfo, world }));
-scene.add(createBuildings({ buildings, world }));
+scene.add(createBuildings({ buildings, world, skip: landmarks.skip }));
 signLayer = createSigns({ signs, buildings, roads, world });
 signLayer.update();
 scene.add(signLayer);
+const placeSigns = createPlaceSigns({ roads, buildings, places: poiData?.places, bridges: bridgeInfo, world });
+scene.add(placeSigns);
+world.builders.push(() => placeSigns.userData.refresh?.());
 
 // okolí za hranou území
 {
@@ -140,7 +147,7 @@ const drive = createDrive({
   roads, bridges: bridgeInfo, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
   onExit: () => setMode('orbit'),
 });
-window.stod3d = { drive, world, camera, signs: signLayer };      // pro ladění v konzoli
+window.stod3d = { drive, world, camera, signs: signLayer, placeSigns };      // pro ladění v konzoli
 
 // ------------------------------------------------------------------ plynulý přelet
 let anim = null;

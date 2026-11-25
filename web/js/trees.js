@@ -56,7 +56,7 @@ function coniferGeo() {
   return shade(g, 0.7, 1.08);
 }
 
-export function createTrees({ buf, meta, world }) {
+export function createTrees({ buf, meta, world, exclude }) {
   const u16 = new Uint16Array(buf), u8 = new Uint8Array(buf);
   const W = meta.width, H = meta.height, C = meta.chunk, ncx = W / C;
   const starts = meta.tree_chunks;
@@ -77,6 +77,7 @@ export function createTrees({ buf, meta, world }) {
     for (let i = a; i < b; i++) {
       const x = u16[i * 4] * 0.2 - W / 2, z = u16[i * 4 + 1] * 0.2 - H / 2;
       const h = u8[i * 8 + 4] / 5, rad = u8[i * 8 + 5] / 10, kind = u8[i * 8 + 6];
+      if (exclude && exclude(x, z, rad)) continue;
       const g = world.heightAt(x, z);
       q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, r() * Math.PI * 2);
       if (kind & 1) {

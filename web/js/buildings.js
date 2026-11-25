@@ -205,7 +205,7 @@ function decompose(outer, box) {
   return rects.length <= 6 ? rects : null;
 }
 
-export function createBuildings({ buildings, world }) {
+export function createBuildings({ buildings, world, skip }) {
   const T = world.T, WW = world.W, HH = world.H;
   const buckets = new Map();
   const bucket = (x, z) => {
@@ -216,6 +216,7 @@ export function createBuildings({ buildings, world }) {
   const P = (x, z, y) => [x, y, z];
 
   buildings.forEach((b, idx) => {
+    if (skip?.has(idx)) return;                 // nahrazeno ručním modelem (landmarks.js)
     const rings = b.rings.map(cleanRing).filter((r) => r.length >= 3);
     if (!rings.length) return;
     const { W, R } = bucket(rings[0][0][0], rings[0][0][1]);

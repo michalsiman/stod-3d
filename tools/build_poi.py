@@ -187,6 +187,198 @@ ZBG_SERVICES = {43: ("nazev_ps", "Policie"), 44: ("nazevobce", "Hasičská zbroj
 
 
 # ---------------------------------------------------------------- main
+
+# ---------------------------------------------------------------- duplicity
+# Stejná věc z více zdrojů (rešerše webu, Wikidata, ZABAGED, OSM) pod různými názvy:
+# „Obec Hradec“ = „Obecní úřad Hradec“, „Pošta Stod (33301)“ = „Pošta Stod“ = OSM „Stod“ (pošta),
+# „ZŠ a MŠ Stod“ = „Základní a mateřská škola Stod“, „Hasičská zbrojnice“ = „Hasičská zbrojnice Líšina“…
+SRC_RANK = {"rešerše webu": 0, "Wikidata / Wikipedie": 1, "Wikidata": 2, "OpenStreetMap": 3, "ZABAGED": 4}
+ABBR = {"zš": "základní škola", "mš": "mateřská škola", "zuš": "základní umělecká škola", "oú": "obecní úřad",
+        "mú": "městský úřad", "sou": "střední odborné učiliště", "ddm": "dům dětí mládeže",
+        "sdh": "hasičská zbrojnice", "žst": "železniční stanice", "žel.st.": "železniční stanice",
+        "oop": "policie", "kd": "kulturní dům"}
+STOP = {"a", "ve", "v", "u", "na", "pod", "nad", "od", "do", "se", "s", "z", "k", "the", "okres", "plzeň-jih",
+        "příspěvková", "organizace", "s.r.o.", "a.s.", "spol.", "bývalá", "bývalý", "bývalé", "zaniklá", "zaniklý",
+        "obce", "části", "česká", "republiky", "čr", "pracoviště"}
+# obec / město / obecní úřad / radnice = totéž (sídlo úřadu)
+SYN = {"obec": "úřad", "obecní": "úřad", "město": "úřad", "městský": "úřad", "městská": "úřad", "radnice": "úřad"}
+# názvy, které nic neříkají – sloučí se do pojmenované věze stejného druhu poblíž
+GENERIC = {"Kříž", "Kříž / sloup kulturního významu", "Pomník / mohyla", "Pomník", "Pamětní místo",
+           "Boží muka / výklenková kaplička", "Hasičská zbrojnice", "Věž", "Policie", "letní kino"}
+# ručně ověřené dvojice (stejná věc, názvy se neshodují): (ponechat, sloučit)
+SAME = [("Poutní kostel na Křížovém vrchu (Vrabina)", "Rozhledna na Křížovém vrchu"),
+        ("Jez a lávka přes Radbuzu u Chotěšova", "jez Chotěšov"),
+        ("Pivovar a rybárna v Chotěšově", "Bývalá rybárna"),
+        ("Hradiště na vrchu Trný", "Trný"),
+        ("Sportovní areál a letní kino Stod", "letní kino"),
+        ("Obecní úřad a pošta Hradec", "Pošta Hradec u Stoda (33211)"),
+        ("Odborné učiliště – škola Stod", "Střední odborné učiliště, Domažlice, Prokopa Velikého 640"),
+        ("Lékařské a zubní ordinace, Hradecká 435", "Psychiatrie MUDr. Gabriela Ťupová s.r.o."),
+        ("Lékařské a zubní ordinace, Hradecká 435", "Gruberovi-stomatologie s.r.o."),
+        ("Lékařské a zubní ordinace, Hradecká 435", "MUDr Věra Hrubá, MUDr Friedrichová Gabriel"),
+        ("Policie", "OOP Stod"),
+        ("Obecní úřad Chotěšov a zdravotní středisko", "Sdružení lékařů"),
+        ("Obecní úřad Chotěšov a zdravotní středisko", "Praktická lékařka pro dospělé, MUDr. Klemperová, MUDr. Jelínková"),
+        ("Obecní úřad Chotěšov a zdravotní středisko", "KL Dental, s.r.o."),
+        ("Obecní úřad Chotěšov a zdravotní středisko", "Gynekologie MUDr. Krčál, s.r.o.")]
+RENAME = {"Poutní kostel na Křížovém vrchu (Vrabina)": "Kostel sv. Kříže a rozhledna na Křížovém vrchu (Vrabina)",
+          "Policie": "Policie ČR – obvodní oddělení Stod",
+          "Stod, žel.st.": "Zastávka Stod, žel. st. (autobusy)"}
+
+
+def _tokens(name, places):
+    import re
+    n = name.lower()
+    n = re.sub(r"\([^)]*\d[^)]*\)", " ", n)              # (33301), (1945)…
+    for k, v in ABBR.items():
+        n = re.sub(rf"(?<![\w.]){re.escape(k)}(?![\w])", v, n)
+    out = set()
+    for w in re.split(r"[\s,–\-/()„“\"]+", n):
+        w = w.strip(".")
+        if len(w) < 3 or w in STOP or w.isdigit():
+            continue
+        out.add(SYN.get(w, w)[:4])
+    pl = {w[:4] for w in out if w in places}
+    return out, pl
+
+
+def dedupe(pois, addresses=()):
+    """Sloučí duplicity; vrátí nový seznam (id přečíslovaná) a počet sloučených."""
+    places = set()
+    for nm in ("stod", "stodu", "stodská", "stodský", "stodské", "chotěšov", "chotěšově", "chotěšova", "hradec",
+               "hradci", "lelov", "lelově", "líšina", "líšině", "střelice", "střelicích", "touškov", "mantov",
+               "mantově", "losina", "losině", "lažany", "maškrov", "vrabina", "vrabině", "přestavlky", "ves"):
+        places.add(nm[:4])
+    info = []
+    for p in pois:
+        tk, _ = _tokens(p["name"], set())
+        info.append(dict(p=p, tk=tk, core=tk - places, rank=SRC_RANK.get(p["src"], 5), gone=False))
+
+    def merge(keep, drop):
+        a, b = keep["p"], drop["p"]
+        a["links"] = list(dict.fromkeys(a["links"] + [l for l in b["links"] if l]))
+        if not a["text"] and b["text"]:
+            a["text"] = b["text"]
+        elif b["text"] and b["src"] == "rešerše webu" and b["text"] not in a["text"]:
+            a["text"] = a["text"].rstrip() + " " + b["text"]
+        if not a.get("year") and b.get("year"):
+            a["year"] = b["year"]
+        drop["gone"] = True
+
+    def pick(i, j):
+        """Která položka zůstane: lepší zdroj, při shodě delší text."""
+        a, b = info[i], info[j]
+        if (a["rank"], -len(a["p"]["text"])) <= (b["rank"], -len(b["p"]["text"])):
+            return a, b
+        return b, a
+
+    by_name = {}
+    for k, it in enumerate(info):
+        by_name.setdefault(it["p"]["name"], []).append(k)
+    for keep, drop in SAME:
+        for i in by_name.get(keep, []):
+            for j in by_name.get(drop, []):
+                pi, pj = info[i]["p"], info[j]["p"]
+                if not info[j]["gone"] and math.hypot(pi["x"] - pj["x"], pi["z"] - pj["z"]) < 400:
+                    merge(info[i], info[j])
+
+    def wd(p):
+        import re
+        return {m for l in p["links"] for m in re.findall(r"wikidata\.org/(?:wiki|entity)/(Q\d+)", l or "")}
+
+    def nums(name):
+        import re
+        return set(re.findall(r"\d+", re.sub(r"\([^)]*\)", "", name)))
+
+    def same(a, b, d):
+        pa, pb = a["p"], b["p"]
+        na, nb = pa["name"], pb["name"]
+        qa, qb = wd(pa), wd(pb)
+        if qa and qb and not (qa & qb):
+            return False                     # dvě různé položky Wikidat
+        if nums(na) and nums(nb) and nums(na) != nums(nb):
+            return False                     # čp. 25 ≠ čp. 35, Domov 1 ≠ Domov 2 (sloučí se níže)
+        ga, gb = na in GENERIC or na == "Významný strom", nb in GENERIC or nb == "Významný strom"
+        if na == nb and not ga:
+            return d < (150 if pa["cat"] != "sluzby" or na.startswith("Zastávka") else 60)
+        if ga or gb:
+            if ga and gb:
+                return d < 12
+            g, o = (a, b) if ga else (b, a)
+            compat = {"cirkev": {"cirkev", "pamatnik"}, "pamatnik": {"pamatnik", "cirkev", "historie", "turistika"},
+                      "stavba": {"stavba"}, "sluzby": {"sluzby"}, "priroda": {"priroda"}}
+            gn = g["p"]["name"]
+            if gn in ("Hasičská zbrojnice", "Policie", "letní kino"):
+                return d < 40 and bool(g["core"] & o["tk"])
+            return d < 50 and o["p"]["cat"] in compat.get(g["p"]["cat"], set()) and gn != "Věž"
+        ta, tb = a["tk"], b["tk"]
+        if not ta or not tb:
+            return False
+        small, big = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+        core_small = (a["core"] if small is ta else b["core"])
+        if small <= big:
+            if not core_small:                      # jen název obce („Stod“) – musí stát na stejném místě
+                return d < 15
+            return d < (60 if pa["cat"] == "sluzby" or pb["cat"] == "sluzby" else 80)
+        if d < 12 and (a["core"] & b["core"]) - {"úřad"}:
+            return True
+        inter = len(ta & tb) / len(ta | tb)
+        return inter >= 0.6 and d < 60
+
+    n = len(info)
+    log = []
+    for i in range(n):
+        if info[i]["gone"]:
+            continue
+        for j in range(i + 1, n):
+            if info[j]["gone"] or info[i]["gone"]:
+                continue
+            pi, pj = info[i]["p"], info[j]["p"]
+            d = math.hypot(pi["x"] - pj["x"], pi["z"] - pj["z"])
+            if d > 400:
+                continue
+            if same(info[i], info[j], d):
+                keep, drop = pick(i, j)
+                # obecný název nikdy nevyhrává nad konkrétním
+                if keep["p"]["name"] in GENERIC and drop["p"]["name"] not in GENERIC:
+                    keep, drop = drop, keep
+                merge(keep, drop)
+                log.append(f'{drop["p"]["name"]} → {keep["p"]["name"]} ({d:.0f} m)')
+
+    out = [it["p"] for it in info if not it["gone"]]
+    # Domov Háječek 1, 2, 3 → Domov Háječek
+    import re
+    groups = {}
+    for p in out:
+        m = re.fullmatch(r"(.+?)\s+\d+", p["name"])
+        if m and p["src"] == "ZABAGED":
+            groups.setdefault(m.group(1), []).append(p)
+    for base, g in groups.items():
+        if len(g) > 1 and max(math.hypot(a["x"] - b["x"], a["z"] - b["z"]) for a in g for b in g) < 120:
+            g[0]["name"] = base
+            g[0]["x"] = round(sum(a["x"] for a in g) / len(g), 1)
+            g[0]["z"] = round(sum(a["z"] for a in g) / len(g), 1)
+            for a in g[1:]:
+                a["gone"] = True
+    out = [p for p in out if not p.get("gone")]
+    # stejný název na více místech (víc budov jedné organizace) → doplnit adresu
+    cnt = {}
+    for p in out:
+        cnt[p["name"]] = cnt.get(p["name"], 0) + 1
+    for p in out:
+        if cnt[p["name"]] > 1 and p["cat"] == "sluzby" and addresses:
+            a = min(addresses, key=lambda a: math.hypot(a[1] - p["x"], a[2] - p["z"]))
+            if math.hypot(a[1] - p["x"], a[2] - p["z"]) < 60:
+                p["name"] = p["name"].split(", příspěvková")[0] + " – " + a[0].split(",")[0]
+    for p in out:
+        p["name"] = RENAME.get(p["name"], p["name"])
+        p.pop("gone", None)
+    for k, p in enumerate(out):
+        p["id"] = k
+    dedupe.log = log
+    return out, len(pois) - len(out)
+
+
 def main():
     pois, places = [], {}
 
@@ -295,6 +487,15 @@ def main():
         name = t.get("name") or OSM_NAME.get(h)
         if not name or near(x, z, 35):
             continue
+        if any(p["name"] == name and math.hypot(p["x"] - x, p["z"] - z) < 400 for p in pois):
+            continue                       # tabule / rozcestník se jménem místa, které už je v seznamu
+        info = t.get("information")
+        if info == "guidepost":
+            name = f"Rozcestník {name}"
+        elif info == "board":
+            name = f"Naučná tabule: {name}"
+        elif info == "map":
+            name = f"Mapa obce: {name}" if " " not in name else f"Informační mapa: {name}"
         osm_id = f"https://www.openstreetmap.org/{el['type']}/{el['id']}"
         add(name, cat, x, z, t.get("description", "") or t.get("inscription", ""), [t.get("website"), osm_id], "OpenStreetMap")
     B.log(f"OSM: {len(pois) - n0} položek")
@@ -376,6 +577,8 @@ def main():
             x, z = local(lon, lat)
             places[name].update(x=round(x, 1), z=round(z, 1))
 
+    pois, nd = dedupe(pois, addresses)
+    B.log(f"Duplicity: sloučeno {nd}")
     out = dict(categories=CATS, pois=pois, places=sorted(places.values(), key=lambda p: -p["rank"]),
                streets=street_list, addresses=addresses, built=time.strftime("%Y-%m-%d"))
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
@@ -385,5 +588,16 @@ def main():
     B.log(f"hotovo: {len(pois)} zajímavostí {by}, {len(places)} obcí → {OUT}")
 
 
+def dedupe_only():
+    """Jen sloučí duplicity v hotovém poi.json (bez stahování)."""
+    d = json.loads(OUT.read_text())
+    d["pois"], nd = dedupe(d["pois"], d.get("addresses", []))
+    OUT.write_text(json.dumps(d, ensure_ascii=False, separators=(",", ":")))
+    B.log(f"Duplicity: sloučeno {nd}, zbývá {len(d['pois'])} zajímavostí")
+
+
 if __name__ == "__main__":
-    main()
+    if "--dedupe-only" in sys.argv:
+        dedupe_only()
+    else:
+        main()

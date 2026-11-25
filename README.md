@@ -25,6 +25,8 @@ web/
   js/bridges.js     mosty: co po nich vede, mostovka, římsy, zábradlí, pilíře, nosníky železničních mostů
   js/posts.js       směrové sloupky (patníky) podél silnic mimo obce
   js/signs.js       cedule s nápisy na domech (úřady, školy, obchody, restaurace, firmy)
+  js/placesigns.js  značky začátek / konec obce (IS12a, IS12b) na vjezdech do zástavby
+  js/landmarks.js   ručně modelované stavby (kostel s rozhlednou na Křížovém vrchu)
   js/buildings.js   budovy: sedlové, valbové, lomené střechy, rozklad L/T/U půdorysů, okna a barvy podle druhu
   js/trees.js       stylizované stromy po blocích 256 m
   js/fences.js      zdi a živé ploty
@@ -67,6 +69,20 @@ web/
 - Patníky (směrové sloupky) se dopočítají na webu: silnice I.–III. třídy, mimo obec (budova do 70 m), ne na mostech
   a u křižovatek, po 50 m, v obloucích po 25 m; vpravo oranžová odrazka, vlevo dvě bílé.
 
+## Ručně modelované stavby
+
+`js/landmarks.js` nahrazuje obecně vygenerovanou budovu vlastním modelem. Kostel sv. Kříže na Křížovém vrchu
+(Vrabina): rozměry z půdorysu RÚIAN, výšky podle popisu (věž 22 m, vyhlídka ve 13 m – obec Chotěšov,
+kudyznudy.cz), vzhled podle veřejně dostupných fotografií (Wikimedia Commons) jen jako předlohy – štítové průčelí
+s kulatým oknem a portálem, věž se třemi obloukovými okny vyhlídky a jehlancovou břidlicovou střechou, zazděná
+okna lodi, presbytář s trojbokým závěrem, sanktusník, altán. Stromy se v okolí stavby nekreslí.
+
+## Značky začátek a konec obce
+
+Zástavba = souvislá oblast obytných a veřejných budov (rozšířená o 50 m, mezery do ~200 m uzavřené), aspoň 12 domů;
+název podle nejbližší obce / části obce. Kde silnice nebo místní komunikace hranici přetíná, stojí 12 m před ní
+vpravo „začátek obce“ a na druhé straně „konec obce“ (přeškrtnutý).
+
 ## Zajímavosti, názvy obcí a ulic
 
 `tools/build_poi.py` → `web/data/poi.json` (spouští se zvlášť, po `build_data.py`). Slučuje:
@@ -74,6 +90,12 @@ web/
   navylet.cz, drobnepamatky.cz, Wikipedie) s vlastními texty a odkazy na zdroje – má přednost,
 - Wikidata (+ krátký úvod z cs Wikipedie), ZABAGED (kříže, pomníky, úřady, školy, nemocnice, pošty, hasiči,
   policie, nádraží), OpenStreetMap (zastávky, ordinace, lékárny, školky, sály…), RÚIAN (ulice).
+
+Duplicity (stejná věc z více zdrojů pod různými názvy – „Obec Hradec“ / „Obecní úřad Hradec“, „Pošta Stod (33301)“ /
+„Pošta Stod“, „ZŠ a MŠ Stod“ / „Základní a mateřská škola Stod“…) slučuje `dedupe()` v `build_poi.py`: porovnává
+názvy po rozepsání zkratek, synonymech (obec = město = úřad) a bez názvů obcí, vzdálenost a druh místa; ruční
+dvojice v `SAME`. Různé položky Wikidat a různá čísla popisná se nikdy neslučují. Turistické rozcestníky a naučné
+tabule z OSM mají v názvu, co jsou. Jen sloučení v hotových datech: `build_poi.py --dedupe-only`.
 
 Na webu tlačítko **Zajímavosti**: přepínače Názvy obcí / Názvy ulic / Zajímavosti po kategoriích,
 hledání, seznam a karta s detailem a zdroji. Volby se pamatují v prohlížeči.
