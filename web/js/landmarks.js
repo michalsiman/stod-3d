@@ -247,6 +247,28 @@ export const FACADES = [
   // kulturní dům: béžový, kamenný obklad přízemí, červená taška; vyšší část se třemi podlažími
   { name: 'Kulturní dům', at: [-769, -1228], wall: 0xd9d1be, roof: 0xb9452f, plinth: 0xd9d1be, plinthH: 0.4, eave: 6.6, ridge: 10.2 },
   { name: 'Kulturní dům – vyšší část', at: [-788, -1207], wall: 0xd9d1be, roof: 0xb9452f, plinth: 0x8a6e52, plinthH: 3.0, eave: 9.0, ridge: 13.2, shape: 'hip' },
+  // ---- Chotěšov
+  // obecní úřad: velká krémová budova se štítem s hodinami, červená taška, tři podlaží
+  { name: 'Obecní úřad Chotěšov', at: [2442.4, -2349.5], wall: 0xe6dcc0, roof: 0xb8452f, plinth: 0xcfc4a6, plinthH: 0.9, ridge: 16.0, shape: 'hip' },
+  // Coop Konzum, Plzeňská: krémový dům, antracitová střecha
+  { name: 'Coop Chotěšov', at: [2595.9, -2586.7], wall: 0xf0e2c2, roof: 0x3c3d40, plinth: 0xc9b99a, plinthH: 0.6 },
+  // obchodní dům (JIP), nám. 1. máje: bílá přízemní stavba s plochou střechou
+  { name: 'Obchodní dům Chotěšov', at: [2705.2, -2251.4], wall: 0xf4f3ef, flat: true },
+  // bývalá rybárna: bílá, oranžová valbová střecha s vikýři
+  { name: 'Bývalá rybárna', at: [2490.0, -1983.4], wall: 0xf6f4ee, roof: 0xd0662f, plinth: 0xd9d6cc, plinthH: 0.5 },
+  // bývalý pivovar: oprýskaná šedookrová omítka, tmavá střecha
+  { name: 'Bývalý pivovar Chotěšov', at: [2457.1, -1943.3], wall: 0xb9ac8c, roof: 0x5b4f48, plinth: 0x8f8670, plinthH: 0.8 },
+  // ---- Střelice
+  // obecní úřad: lidová usedlost se štítem do návsi, krémová s okrovými šambránami, hnědá taška
+  { name: 'Obecní úřad Střelice', at: [-2479.5, -451.4], wall: 0xf2e7c9, roof: 0x7a4a36, plinth: 0xd9a34c, plinthH: 0.5, eave: 4.6, ridge: 9.4, shape: 'gable' },
+  // kaple na návsi: bílá s okrovými lizénami, tmavá střecha
+  { name: 'Kaple ve Střelicích', at: [-2514.0, -426.4], wall: 0xf3efe6, roof: 0x4a4440, plinth: 0xa8a59c, plinthH: 0.5 },
+  // ---- Hradec
+  // pošta: světle růžová, červená taška
+  { name: 'Pošta Hradec', at: [-3340.6, -1137.8], wall: 0xedcdc3, roof: 0xb24a34, plinth: 0xc9aaa0, plinthH: 0.6 },
+  // ---- Ves Touškov
+  // hostinec: šedá omítka, cihlový vstup, plochá střecha
+  { name: 'Hostinec Ves Touškov', at: [-3216.6, -4095.1], wall: 0xbdbab2, plinth: 0x9c4a35, plinthH: 1.0, flat: true },
 ];
 
 /** Vrátí { group, skip, keepOut } – skip = indexy budov, které landmark nahrazuje, keepOut(x, z, r) = bez stromů. */
