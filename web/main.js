@@ -13,6 +13,8 @@ import { createReport } from './js/report.js';
 import { createSky, applySun, createTimeControls } from './js/sun.js';
 import { createLamps, updateLamps } from './js/lamps.js';
 import { createDrive } from './js/drive.js';
+import { createPosts } from './js/posts.js';
+import { createSigns } from './js/signs.js';
 
 // ------------------------------------------------------------------ renderer
 const canvas = document.getElementById('scene');
@@ -40,13 +42,14 @@ const get = (p, kind = 'json') => fetch(`data/${p}`).then((r) => {
 
 const meta = await get('meta.json');
 loaderText.textContent = 'Načítám terén, budovy a cesty…';
-const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps] = await Promise.all([
+const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs] = await Promise.all([
   get('far_h.bin', 'bin'),
   new THREE.TextureLoader().loadAsync('data/far.png'),
   get('buildings.json'), get('roads.json'), get('bridges.json'), get('fences.json'), get('power.json'),
   get('trees.bin', 'bin'),
   fetch('data/poi.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
   fetch('data/lamps.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+  fetch('data/signs.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
 ]);
 farTex.colorSpace = THREE.SRGBColorSpace;
 farTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -67,6 +70,7 @@ scene.add(sun, sun.target);
 const hemi = new THREE.HemisphereLight(0xe8f2ff, 0xc2c8a8, 2.1);
 scene.add(hemi);
 let sunPos = { el: 40, az: 205 };
+let signLayer = null;
 
 // stíny – přepínač (pamatuje si volbu); na mobilu ve výchozím stavu vypnuté
 let shadows = !isCoarse;
@@ -74,6 +78,7 @@ try { const v = localStorage.getItem('stod3d.shadows'); if (v !== null) shadows 
 function applyLight() {
   applySun(sunPos, { sun, hemi, sky, fog: scene.fog, renderer, shadowsWanted: shadows });
   updateLamps();
+  signLayer?.update();
   scene.traverse((o) => { if (o.material && !o.material.isShaderMaterial) o.material.needsUpdate = true; });
   invalidate();
 }
@@ -106,7 +111,11 @@ const bridgeInfo = prepareBridges(bridges, roads, world);
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
+world.builders.push(createPosts({ roads, buildings, bridges: bridgeInfo, world }));
 scene.add(createBuildings({ buildings, world }));
+signLayer = createSigns({ signs, buildings, roads, world });
+signLayer.update();
+scene.add(signLayer);
 
 // okolí za hranou území
 {
@@ -131,7 +140,7 @@ const drive = createDrive({
   roads, bridges: bridgeInfo, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
   onExit: () => setMode('orbit'),
 });
-window.stod3d = { drive, world, camera };      // pro ladění v konzoli
+window.stod3d = { drive, world, camera, signs: signLayer };      // pro ladění v konzoli
 
 // ------------------------------------------------------------------ plynulý přelet
 let anim = null;

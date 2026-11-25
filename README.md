@@ -23,6 +23,8 @@ web/
   js/terrain.js     sítě terénu a barvy ploch podle mapy pokryvu
   js/roads.js       silnice, cesty a železnice jako barevné pásy s rovnými okraji
   js/bridges.js     mosty: co po nich vede, mostovka, římsy, zábradlí, pilíře, nosníky železničních mostů
+  js/posts.js       směrové sloupky (patníky) podél silnic mimo obce
+  js/signs.js       cedule s nápisy na domech (úřady, školy, obchody, restaurace, firmy)
   js/buildings.js   budovy: sedlové, valbové, lomené střechy, rozklad L/T/U půdorysů, okna a barvy podle druhu
   js/trees.js       stylizované stromy po blocích 256 m
   js/fences.js      zdi a živé ploty
@@ -55,6 +57,15 @@ web/
 - Druh budovy (okna, barvy, vrata garáží, skleníky) podle způsobu využití z RÚIAN, jinak podle OSM.
 - Samostatné stromy se nehledají na silnicích, železnici, mostech a pod vedením (DMP tam vidí mostovku,
   auta, trolej a sloupy).
+
+## Cedule a patníky
+
+- `tools/build_signs.py` → `web/data/signs.json` (po `build_poi.py`): ručně vybraný seznam úřadů, škol, nemocnice,
+  pošt, hasičů, obchodů, restaurací a větších firem. Poloha z adresních míst RÚIAN (adresy firem z jejich webů
+  a katalogů), z OpenStreetMap nebo ze zajímavostí. Web cedulí označí dům pod bodem (nebo nejbližší do 30 m),
+  na stěně k nejbližší ulici, mezi okny přízemí a patra. Bez domu stojí cedule na sloupcích.
+- Patníky (směrové sloupky) se dopočítají na webu: silnice I.–III. třídy, mimo obec (budova do 70 m), ne na mostech
+  a u křižovatek, po 50 m, v obloucích po 25 m; vpravo oranžová odrazka, vlevo dvě bílé.
 
 ## Zajímavosti, názvy obcí a ulic
 
