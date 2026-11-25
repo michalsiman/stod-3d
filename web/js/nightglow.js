@@ -30,7 +30,7 @@ function material() {
   return mat;
 }
 
-export function createNightGlow({ lamps, buildings, world }) {
+export function createNightGlow({ lamps, buildings, world, spots = [] }) {
   material();
   const per = new Map();
   const add = (x, z, item) => {
@@ -46,6 +46,7 @@ export function createNightGlow({ lamps, buildings, world }) {
     add(hx, hz, [hx, hz, 16, 0.85, -1]);
     void H;
   }
+  for (const { at: [x, z], r, k } of spots) add(x, z, [x, z, r, k, -1]);   // nasvícené stavby
   let seed = 7;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
   for (const b of buildings) {

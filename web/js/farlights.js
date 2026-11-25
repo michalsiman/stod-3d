@@ -7,7 +7,7 @@ import { NIGHT } from './night.js';
 
 const CELL = 25;
 
-export function createFarLights({ lamps, buildings, world }) {
+export function createFarLights({ lamps, buildings, world, spots = [] }) {
   const group = new THREE.Group();
   const W = world.W, H = world.H, nx = Math.ceil(W / CELL) + 1, nz = Math.ceil(H / CELL) + 1;
   const grid = new Float32Array(nx * nz);
@@ -16,6 +16,7 @@ export function createFarLights({ lamps, buildings, world }) {
     if (c >= 0 && r >= 0 && c < nx && r < nz) grid[r * nx + c] += w;
   };
   for (const [x, z] of lamps || []) addAt(x, z, 1);
+  for (const { at: [x, z] } of spots) addAt(x, z, 6);
   const homePts = [];
   let seed = 3;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
@@ -101,6 +102,10 @@ export function createFarLights({ lamps, buildings, world }) {
   for (const [x, z, ang] of lamps || []) {
     const hx = x + Math.cos(ang) * 1.35, hz = z + Math.sin(ang) * 1.35;
     pts.push(hx, world.farHeightAt(hx, hz) + 6.6, hz); att.push(1, -1);
+  }
+  // nasvícené stavby: několik jasných bodů po výšce (stěny a věž)
+  for (const { at: [x, z], top = 30 } of spots) {
+    for (const t of [0.15, 0.4, 0.65, 0.9]) { pts.push(x, world.farHeightAt(x, z) + top * t, z); att.push(2.2 * (1.1 - t * 0.5), -1); }
   }
   for (const [x, z, y, h] of homePts) { pts.push(x, Math.max(y, world.farHeightAt(x, z)) + 2, z); att.push(0.55, h); }
   const pg = new THREE.BufferGeometry();

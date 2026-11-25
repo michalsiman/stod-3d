@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { NIGHT } from './night.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Ručně modelované stavby, které obecný generátor budov nevystihne. Každá nahradí budovu (budovy),
@@ -350,7 +351,7 @@ function kostelStod() {
   place(new THREE.ConeGeometry(hw * 0.55, 7.5, 8, 1, true), uc, VC, TH + 3 + 3.75, C.copper);
   place(new THREE.SphereGeometry(0.3, 10, 8), uc, VC, TH + 10.9, C.gold);
   cross(uc, VC, TH + 11.1, 1.8, C.gold);
-  return { at: [-134.8, -741.5], radius: 8, geo: K.done() };
+  return { at: [-134.8, -741.5], radius: 8, geo: K.done(), floodlit: { top: TH + 12 } };
 }
 
 /** Špitální kaple ve Stodě – osmiboká, bílá se žlutými lizénami a šambránami, červená jehlancová
@@ -592,6 +593,35 @@ export const FACADES = [
   { name: 'Hostinec Ves Touškov', at: [-3216.6, -4095.1], wall: 0xbdbab2, plinth: 0x9c4a35, plinthH: 1.0, flat: true },
 ];
 
+// Slavnostní nasvícení (kostel ve Stodě): v noci teplé bílé světlo reflektorů zespodu – stěny jasné
+// u země a slábnoucí k vrcholu věže, střechy jen slabě, okna tmavá. Kruh světla na zemi kolem
+// (nightglow.js) a záře viditelná z dálky (farlights.js) podle FLOODLIT.
+export const FLOODLIT = [{ at: [-138.0, -739.4], r: 34, k: 0.75, top: 39 }];
+
+function floodMaterial(top) {
+  const m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uNight = NIGHT.night;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vFH; varying float vFN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFH = position.y; vFN = abs(normal.y);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uNight; varying float vFH; varying float vFN;')
+      .replace('#include <opaque_fragment>', `
+        {
+          float h = vFH / ${top.toFixed(1)};
+          float wall = 1. - smoothstep(.35, .8, vFN);              // svislé plochy (reflektory zespodu)
+          float f = mix(.95, .42, smoothstep(0., 1., h)) + .5 * exp(-vFH / 2.5);
+          f *= mix(.22, 1., wall);
+          float lum = dot(diffuseColor.rgb, vec3(.3, .55, .15));
+          f *= smoothstep(.03, .2, lum);                             // okna a dveře zůstanou tmavé
+          outgoingLight += diffuseColor.rgb * vec3(1., .86, .66) * f * 1.15 * uNight;
+        }
+        #include <opaque_fragment>`);
+  };
+  return m;
+}
+
 /** Vrátí { group, skip, keepOut } – skip = indexy budov, které landmark nahrazuje, keepOut(x, z, r) = bez stromů. */
 export function createLandmarks({ buildings }) {
   const group = new THREE.Group();
@@ -612,7 +642,7 @@ export function createLandmarks({ buildings }) {
     });
     if (base === null) continue;
     if (lm.keepOut) outs.push(lm.keepOut);
-    const m = new THREE.Mesh(lm.geo, mat);
+    const m = new THREE.Mesh(lm.geo, lm.floodlit ? floodMaterial(lm.floodlit.top) : mat);
     m.position.y = base;
     m.castShadow = m.receiveShadow = true;
     group.add(m);

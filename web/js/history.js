@@ -1,16 +1,21 @@
 import * as THREE from 'three';
 import { gridGeometry } from './terrain.js';
+import { NIGHT } from './night.js';
 
 // Přepínač „Historie“: terén potažený historickou mapou nebo leteckým snímkem (data/hist/<rok>/<i>_<j>.jpg,
 // tools/build_history.py); současné budovy, silnice, stromy, doprava a další vrstvy se skryjí.
-// Dlaždice se načítají až při prvním zapnutí daného roku.
+// Dlaždice se načítají až při prvním zapnutí daného roku (nejbližší ke kameře první). Telefony dostanou
+// zmenšené dlaždice (SMALL) – plné rozlišení zabere ~300 MB paměti grafiky a mobil textury nenačte.
+// V noci je snímek mírně přisvětlený, aby byl čitelný.
 
 export const HISTORY = {
   '1953': 'Letecké snímky 1953',
   '1880': 'Vojenská mapa kolem 1880',
 };
 
-export function createHistory({ world, meta, scene, keep }) {
+const SMALL = { '1953': '1953s' };
+
+export function createHistory({ world, meta, scene, keep, coarse, camera }) {
   const group = new THREE.Group();
   group.visible = false;
   scene.add(group);
@@ -47,13 +52,20 @@ export function createHistory({ world, meta, scene, keep }) {
   function material(y, i, j) {
     const key = `${y}/${i}_${j}`;
     if (!mats.has(key)) {
-      const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      loader.load(`data/hist/${key}.jpg`, (tex) => {
+      const mat = new THREE.MeshLambertMaterial({ color: 0xb9b4a8 });
+      mat.onBeforeCompile = (sh) => {
+        sh.uniforms.uNight = NIGHT.night;
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', '#include <common>\nuniform float uNight;')
+          .replace('#include <opaque_fragment>', 'outgoingLight += diffuseColor.rgb * uNight * .6;\n#include <opaque_fragment>');
+      };
+      const dir = (coarse && SMALL[y]) || y;
+      loader.load(`data/hist/${dir}/${i}_${j}.jpg`, (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 8;
-        mat.map = tex; mat.needsUpdate = true;
+        tex.anisotropy = coarse ? 2 : 8;
+        mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
         onLoad?.();
-      });
+      }, undefined, () => console.warn('historie: nenačteno', key));
       mats.set(key, mat);
     }
     return mats.get(key);
@@ -67,7 +79,10 @@ export function createHistory({ world, meta, scene, keep }) {
       year = y || null;
       if (year) {
         build();
-        for (const m of meshes) m.material = material(year, ...m.userData.tile);
+        // nejdřív dlaždice nejblíž ke kameře (načítání jde v pořadí požadavků)
+        const T2 = meta.tile / 2, cx = camera ? camera.position.x : 0, cz = camera ? camera.position.z : 0;
+        const dist = (m) => { const [i, j] = m.userData.tile; return Math.hypot(-world.W / 2 + i * meta.tile + T2 - cx, -world.H / 2 + j * meta.tile + T2 - cz); };
+        for (const m of [...meshes].sort((a, b) => dist(a) - dist(b))) m.material = material(year, ...m.userData.tile);
         if (!hidden.length) {
           for (const o of scene.children) {
             if (o === group || keep(o) || !o.visible) continue;

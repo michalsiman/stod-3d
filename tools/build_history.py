@@ -37,6 +37,17 @@ def main():
                 (out / f"{i}_{j}.jpg").write_bytes(raw)
                 time.sleep(0.15)
         print(f"{year}: {B.NX * B.NY} dlaždic → {out}")
+        if px > 512:
+            small(out, B.OUT / "hist" / f"{year}s", 512)
+
+
+def small(src, dst, px):
+    """Zmenšené dlaždice pro telefony (méně paměti grafiky; 56 × 1024² se do mobilu nevejde)."""
+    from PIL import Image
+    dst.mkdir(parents=True, exist_ok=True)
+    for f in sorted(src.glob("*.jpg")):
+        Image.open(f).convert("RGB").resize((px, px), Image.LANCZOS).save(dst / f.name, quality=82)
+    print(f"  {dst.name}: zmenšeno na {px} px")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ import { createLamps, updateLamps } from './js/lamps.js';
 import { createDrive } from './js/drive.js';
 import { createPosts } from './js/posts.js';
 import { createSigns } from './js/signs.js';
-import { createLandmarks, createRoundabouts, EXTRA_BRIDGES, EXTRA_FENCES } from './js/landmarks.js';
+import { createLandmarks, createRoundabouts, FLOODLIT, EXTRA_BRIDGES, EXTRA_FENCES } from './js/landmarks.js';
 import { createPlaceSigns } from './js/placesigns.js';
 import { createTraffic } from './js/traffic.js';
 import { createLife } from './js/life.js';
@@ -147,8 +147,8 @@ world.builders.push(sidewalks.build);
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
-world.builders.push(createNightGlow({ lamps, buildings, world }));
-scene.add(createFarLights({ lamps, buildings, world }));       // světla města z dálky / z výšky
+world.builders.push(createNightGlow({ lamps, buildings, world, spots: FLOODLIT }));
+scene.add(createFarLights({ lamps, buildings, world, spots: FLOODLIT }));       // světla města z dálky / z výšky
 world.builders.push(createPosts({ roads, buildings, bridges: bridgeInfo, world }));
 scene.add(createBuildings({ buildings, world, skip: landmarks.skip }));
 signLayer = createSigns({ signs, buildings, roads, world });
@@ -232,7 +232,7 @@ world.builders.push(() => traffic.refreshParked());
   // historie: terén s historickou mapou / leteckým snímkem, současné vrstvy skryté
   const hs = document.getElementById('history');
   const keepObj = (o) => o === sky.mesh || o.isLight || o === sun.target || o === rain.points || o === snow.points;
-  const histLayer = createHistory({ world, meta, scene, keep: keepObj });
+  const histLayer = createHistory({ world, meta, scene, keep: keepObj, coarse: isCoarse, camera });
   const applyHist = () => {
     histLayer.set(hs.value, invalidate);
     world.hidden = !!hs.value;
