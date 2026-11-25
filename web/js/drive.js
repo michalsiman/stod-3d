@@ -507,6 +507,9 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     }
   }
   function hideTraffic() { for (const bot of bots) { bot.line = null; bot.m.car.visible = false; } }
+  // vlastní jednoduchá auta jen tehdy, když neběží celková doprava (traffic.js)
+  let botsOn = true;
+  function setBots(v) { botsOn = v; if (!v) hideTraffic(); }
 
   /** Povrch pod bodem: typ komunikace (nebo -1 mimo cestu) a výška jízdní plochy. */
   function surfaceAt(x, z) {
@@ -654,7 +657,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     model.tail.emissiveIntensity = (brake ? 1.6 : 0.35) + night * 0.8;
 
     placeCamera(false, dt);
-    updateTraffic(dt);
+    if (botsOn) updateTraffic(dt);
     updateGoal();
     mapT -= dt;
     if (mapT <= 0) { mapT = 0.08; drawMap(); }
@@ -678,5 +681,5 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     return true;
   }
 
-  return { start, stop, update, get active() { return st.active; }, state: st, bots };
+  return { start, stop, update, setBots, get active() { return st.active; }, state: st, bots };
 }

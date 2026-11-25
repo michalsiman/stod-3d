@@ -100,6 +100,26 @@ tabule z OSM mají v názvu, co jsou. Jen sloučení v hotových datech: `build_
 Na webu tlačítko **Zajímavosti**: přepínače Názvy obcí / Názvy ulic / Zajímavosti po kategoriích,
 hledání, seznam a karta s detailem a zdroji. Volby se pamatují v prohlížeči.
 
+## Doprava, lidé a zvířata
+
+Přepínače v panelu (Zobrazení → Doprava / Lidé / Zvířata a ptáci, volba se pamatuje):
+
+* **zastávky** – `tools/build_transit.py` → `web/data/stops.json`: autobusové zastávky a vlakové zastávky
+  s nástupišti z OpenStreetMap; v obcích, kde v OSM zastávka chybí (Líšina, Ves Touškov, Lažany, Týnec),
+  odhad na hlavní silnici u návsi (`"est": 1`). Označníky, přístřešky, lavičky, nástupiště s cedulemi.
+* **auta** (`web/js/traffic.js`) – osobní auta, dodávky, náklaďáky, kamiony s návěsem a traktory (i s vlekem)
+  jezdí po silniční síti ZABAGED v okolí místa pohledu: vpravo, hlavně po hlavních silnicích, v obcích 50 km/h,
+  zpomalují v zatáčkách, drží odstup, dávají přednost křižujícím a stojí před přejezdem, když jede vlak.
+* **autobusy** – linky v `LINES` (traffic.js) mezi zastávkami (trasa = nejlevnější cesta po silnicích),
+  na zastávkách stojí 15–25 s. Linky jsou ilustrační, ne podle skutečného jízdního řádu (otevřená data
+  jízdních řádů IDPK nejsou k dispozici).
+* **vlaky** – osobní P3 (dvoudílná jednotka, staví v Chotěšově, Stodě a Hradci) a rychlík Ex6
+  (lokomotiva + 5 vozů, projíždí) se na jednokolejné trati střídají.
+* **lidé a zvířata** (`web/js/life.js`) – chodci na chodnících v obcích, lidé čekající na zastávkách,
+  srnky u okrajů lesa (utečou, když se kamera přiblíží), zajíci na polích, hejna ptáků a kroužící káně.
+
+Modely jsou v `web/js/models.js` (sloučené kvádry s barvami vrcholů, vykreslené jako instance).
+
 ## Přegenerování dat
 
 ```bash

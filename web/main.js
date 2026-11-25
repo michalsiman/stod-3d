@@ -17,6 +17,8 @@ import { createPosts } from './js/posts.js';
 import { createSigns } from './js/signs.js';
 import { createLandmarks, EXTRA_BRIDGES } from './js/landmarks.js';
 import { createPlaceSigns } from './js/placesigns.js';
+import { createTraffic } from './js/traffic.js';
+import { createLife } from './js/life.js';
 
 // ------------------------------------------------------------------ renderer
 const canvas = document.getElementById('scene');
@@ -44,7 +46,7 @@ const get = (p, kind = 'json') => fetch(`data/${p}`).then((r) => {
 
 const meta = await get('meta.json');
 loaderText.textContent = 'Načítám terén, budovy a cesty…';
-const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs] = await Promise.all([
+const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops] = await Promise.all([
   get('far_h.bin', 'bin'),
   new THREE.TextureLoader().loadAsync('data/far.png'),
   get('buildings.json'), get('roads.json'), get('bridges.json'), get('fences.json'), get('power.json'),
@@ -52,6 +54,7 @@ const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData
   fetch('data/poi.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
   fetch('data/lamps.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/signs.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+  fetch('data/stops.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
 ]);
 farTex.colorSpace = THREE.SRGBColorSpace;
 farTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -147,7 +150,28 @@ const drive = createDrive({
   roads, bridges: bridgeInfo, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
   onExit: () => setMode('orbit'),
 });
-window.stod3d = { drive, world, camera, signs: signLayer, placeSigns };      // pro ladění v konzoli
+
+// živá mapa: doprava, lidé, zvířata (přepínače si pamatují volbu)
+const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, coarse: isCoarse, drive });
+const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, coarse: isCoarse });
+world.builders.push(() => traffic.refreshStops());
+{
+  const opt = (key, def) => { try { const v = localStorage.getItem(`stod3d.${key}`); return v === null ? def : v === '1'; } catch { return def; } };
+  const bind = (id, key, apply) => {
+    const cb = document.getElementById(id);
+    cb.checked = opt(key, true);
+    apply(cb.checked);
+    cb.addEventListener('change', () => {
+      try { localStorage.setItem(`stod3d.${key}`, cb.checked ? '1' : '0'); } catch { /* ignorovat */ }
+      apply(cb.checked);
+      invalidate();
+    });
+  };
+  bind('live-traffic', 'traffic', (v) => { traffic.setEnabled(v); drive.setBots(!v); });
+  bind('live-people', 'people', (v) => life.setPeople(v));
+  bind('live-animals', 'animals', (v) => life.setAnimals(v));
+}
+window.stod3d = { drive, world, camera, orbit, signs: signLayer, placeSigns, traffic, life };      // pro ladění v konzoli
 
 // ------------------------------------------------------------------ plynulý přelet
 let anim = null;
@@ -408,6 +432,15 @@ renderer.setAnimationLoop(() => {
   if (anim) { stepAnim(); dirty = true; }
   else if (mode === 'drive') { drive.update(dt, keys); dirty = true; }
   else if (mode === 'orbit') { if (keys.size) panByKeys(dt); if (orbit.update()) dirty = true; } else if (keys.size || dirty) updateFree(dt);
+
+  // doprava a život: jen když je kamera dost nízko, aby šlo něco vidět (jinak se nekreslí pořád dokola)
+  if (traffic.enabled || life.active) {
+    const lf = mode === 'orbit' ? orbit.target : camera.position;
+    const camH = camera.position.y - world.heightAt(camera.position.x, camera.position.z);
+    const a = traffic.update(dt, lf, camera);
+    const b = life.update(dt, lf, camera);
+    if ((a || b) && camH < 2500) dirty = true;
+  }
 
   const now = clock.elapsedTime;
   if (dirty || now - lastWorldCheck > 0.5) {      // dlaždice kontrolovat i bez pohybu (dokončené načtení)

@@ -307,6 +307,10 @@ body.picking::after {
 .icon-btn:hover { background: var(--soft-2); }
 #title.collapsed .icon-btn svg { transform: rotate(180deg); }
 #title.collapsed .panel-body { display: none; }
+/* sbaleno: jen nápis a tlačítko (na mobilu nezabírá místo) */
+#title.collapsed { width: auto; padding: 7px 8px 7px 14px; gap: 0; }
+#title.collapsed .logo, #title.collapsed .brand-text p, #title.collapsed #search { display: none; }
+#title.collapsed .brand-text h1 { font-size: 17px; }
 
 /* hledání */
 #search { position: relative; margin: 0; width: auto; }
@@ -400,6 +404,7 @@ body.picking::after {
 
 @media (max-width: 600px) {
   #title { width: calc(100vw - 24px); left: 12px; top: 12px; }
+  #title.collapsed { width: auto; }
 }
 
 /* ---------------------------------------------------------------- projížďka autem */
