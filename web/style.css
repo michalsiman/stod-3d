@@ -469,3 +469,18 @@ body.driving #help, body.driving #help-toggle, body.driving #poi-info { display:
   .dh-map { width: 112px; height: 112px; top: 132px; right: 12px; }
   .dh-goal { top: 132px; left: 12px; transform: none; max-width: calc(100vw - 150px); font-size: 12.5px; white-space: normal; }
 }
+
+/* ---------------------------------------------------------------- ovládací tlačítka na mapě */
+#map-ctl { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 2;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; }
+#map-ctl button { appearance: none; border: 0; cursor: pointer; width: 40px; height: 40px; display: grid; place-items: center;
+  color: var(--text); background: rgba(24, 28, 26, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: background .15s; }
+#map-ctl button:hover { background: rgba(24, 28, 26, 0.75); }
+#map-ctl button:active { background: rgba(224, 160, 80, 0.55); }
+#map-ctl .ctl-north { border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+#map-ctl .ctl-north svg { transition: transform .1s linear; }
+#map-ctl .ctl-group { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+#map-ctl .ctl-group button + button { border-top: 1px solid rgba(255,255,255,.08); }
+body:not([data-mode="orbit"]) #map-ctl { display: none; }
+@media (max-width: 600px) { #map-ctl { right: 10px; } #map-ctl button { width: 42px; height: 42px; } }

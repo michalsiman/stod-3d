@@ -342,12 +342,14 @@ function setMode(next) {
   }
   mode = next;
   document.body.classList.toggle('driving', mode === 'drive');
+  document.body.dataset.mode = mode;
   document.querySelectorAll('#modes [data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   document.querySelectorAll('#help [data-help]').forEach((d) => { d.hidden = d.dataset.help !== mode; });
   invalidate();
 }
 
 document.querySelectorAll('#modes [data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+document.body.dataset.mode = mode;
 // sbalení menu (na mobilu ve výchozím stavu sbalené)
 {
   const panel = document.getElementById('title'), btn = document.getElementById('panel-collapse');
@@ -417,6 +419,86 @@ function updateFree(dt) {
 const panF = new THREE.Vector3(), panR = new THREE.Vector3(), panD = new THREE.Vector3();
 const sph = new THREE.Spherical(), off = new THREE.Vector3();
 const has = (...c) => c.some((k) => keys.has(k));
+// ------------------------------------------------------------------ ovládací tlačítka na mapě + zoom jedním prstem
+const held = { rot: 0, tilt: 0, zoom: 0, any() { return this.rot || this.tilt || this.zoom; } };
+let northT = null;
+function northAnim(dt) {
+  if (northT === null) return false;
+  off.subVectors(camera.position, orbit.target);
+  sph.setFromVector3(off);
+  const d = Math.atan2(Math.sin(-sph.theta), Math.cos(-sph.theta));
+  const stepA = Math.sign(d) * Math.min(Math.abs(d), dt * 5);
+  sph.theta += stepA;
+  camera.position.copy(orbit.target).add(off.setFromSpherical(sph));
+  camera.lookAt(orbit.target);
+  if (Math.abs(d) < 0.002) { northT = null; orbit.dispatchEvent({ type: 'change' }); }
+  return true;
+}
+{
+  const ctl = document.getElementById('map-ctl');
+  ctl.querySelectorAll('[data-hold]').forEach((b) => {
+    const [k, v] = b.dataset.hold.split(':');
+    const down = (e) => { e.preventDefault(); held[k] = +v; anim = null; northT = null; try { b.setPointerCapture(e.pointerId); } catch { /* ignorovat */ } invalidate(); };
+    const up = () => { held[k] = 0; orbit.dispatchEvent({ type: 'change' }); };
+    b.addEventListener('pointerdown', down);
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', up);
+    b.addEventListener('lostpointercapture', up);
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+  });
+  ctl.querySelector('.ctl-north').addEventListener('click', () => { anim = null; northT = 1; invalidate(); });
+  // střelka kompasu ukazuje sever
+  const needle = ctl.querySelector('.ctl-north svg');
+  orbit.addEventListener('change', () => {
+    off.subVectors(camera.position, orbit.target);
+    needle.style.transform = `rotate(${(-Math.atan2(off.x, off.z) * 180 / Math.PI).toFixed(1)}deg)`;
+  });
+
+  // zoom jedním prstem (jako Google / Mapy.cz): ťuk + znovu přiložit a táhnout nahoru/dolů;
+  // samotné dvojité ťuknutí přiblíží
+  let lastTap = 0, lastX = 0, lastY = 0, zoomTouch = null;
+  addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' || e.target !== canvas || mode !== 'orbit') return;
+    const now = performance.now();
+    if (now - lastTap < 320 && Math.hypot(e.clientX - lastX, e.clientY - lastY) < 40) {
+      e.stopImmediatePropagation(); e.preventDefault();
+      zoomTouch = { id: e.pointerId, y0: e.clientY, y: e.clientY, moved: false };
+      orbit.enabled = false; anim = null;
+      lastTap = 0;
+      return;
+    }
+    lastTap = now; lastX = e.clientX; lastY = e.clientY;
+  }, { capture: true });
+  addEventListener('pointermove', (e) => {
+    if (!zoomTouch || e.pointerId !== zoomTouch.id) return;
+    e.stopImmediatePropagation();
+    const dy = e.clientY - zoomTouch.y;
+    zoomTouch.y = e.clientY;
+    if (Math.abs(e.clientY - zoomTouch.y0) > 8) zoomTouch.moved = true;
+    off.subVectors(camera.position, orbit.target);
+    sph.setFromVector3(off);
+    sph.radius = THREE.MathUtils.clamp(sph.radius * Math.exp(-dy * 0.008), orbit.minDistance, orbit.maxDistance);
+    camera.position.copy(orbit.target).add(off.setFromSpherical(sph));
+    invalidate();
+  }, { capture: true });
+  const endZoom = (e) => {
+    if (!zoomTouch || e.pointerId !== zoomTouch.id) return;
+    e.stopImmediatePropagation();
+    if (!zoomTouch.moved) {                       // dvojité ťuknutí → přiblížit
+      off.subVectors(camera.position, orbit.target);
+      sph.setFromVector3(off);
+      sph.radius = Math.max(orbit.minDistance, sph.radius * 0.5);
+      camera.position.copy(orbit.target).add(off.setFromSpherical(sph));
+    }
+    zoomTouch = null;
+    orbit.enabled = true;
+    orbit.dispatchEvent({ type: 'change' });
+    invalidate();
+  };
+  addEventListener('pointerup', endZoom, { capture: true });
+  addEventListener('pointercancel', endZoom, { capture: true });
+}
+
 function panByKeys(dt) {
   const shift = has('ShiftLeft', 'ShiftRight');
   let f = 0, r = 0, rot = 0, tilt = 0, zoom = 0;
@@ -430,6 +512,7 @@ function panByKeys(dt) {
   if (shift && has('ArrowDown')) tilt += 1;
   if (has('Equal', 'NumpadAdd', 'PageUp', 'BracketRight')) zoom -= 1;
   if (has('Minus', 'NumpadSubtract', 'PageDown', 'Slash')) zoom += 1;
+  rot += held.rot; tilt += held.tilt; zoom += held.zoom;           // tlačítka na mapě
   if (!f && !r && !rot && !tilt && !zoom) return;
   anim = null;
 
@@ -504,7 +587,7 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
   if (anim) { stepAnim(); dirty = true; }
   else if (mode === 'drive') { drive.update(dt, keys); dirty = true; }
-  else if (mode === 'orbit') { if (keys.size) panByKeys(dt); if (orbit.update()) dirty = true; } else if (keys.size || dirty) updateFree(dt);
+  else if (mode === 'orbit') { if (keys.size || held.any()) panByKeys(dt); if (northAnim(dt)) dirty = true; if (orbit.update()) dirty = true; } else if (keys.size || dirty) updateFree(dt);
 
   // mlha jen na obzoru: s výškou kamery se odsouvá (z výšky není město zamlžené); v dešti blíž
   {

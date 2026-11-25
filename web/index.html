@@ -30,6 +30,22 @@
     </div>
   </div>
 
+  <div id="map-ctl" aria-label="Ovládání mapy">
+    <button class="ctl-north" title="Natočit severem nahoru"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3l4 9h-8z" fill="#e0533d"/><path d="M12 21l-4-9h8z" fill="currentColor" opacity=".55"/></svg></button>
+    <div class="ctl-group">
+      <button data-hold="rot:-1" title="Otočit doleva"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button data-hold="rot:1" title="Otočit doprava"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="ctl-group">
+      <button data-hold="tilt:-1" title="Pohled víc shora"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button data-hold="tilt:1" title="Pohled víc z boku"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="ctl-group">
+      <button data-hold="zoom:-1" title="Přiblížit"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button data-hold="zoom:1" title="Oddálit"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+
   <div id="night-tip" class="panel" hidden>
     <div class="nt-text">Venku je teď <b class="nt-when">tma</b> – mapa ukazuje skutečný čas.
       Den, noc i roční období přepnete v menu v části <b>Slunce a čas</b>.</div>
