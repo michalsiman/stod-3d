@@ -7,7 +7,7 @@ import { createTrees } from './js/trees.js';
 import { createRoads } from './js/roads.js';
 import { createSidewalks } from './js/sidewalks.js';
 import { createSports, stadiumPitch } from './js/sports.js';
-import { createFootball } from './js/football.js';
+import { createFootball, stadiumLights } from './js/football.js';
 import { createNightGlow } from './js/nightglow.js';
 import { createFarLights } from './js/farlights.js';
 import { createRain } from './js/rain.js';
@@ -150,8 +150,9 @@ world.builders.push(createSquare({ world }));        // nám. ČSA: parkoviště
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
-world.builders.push(createNightGlow({ lamps, buildings, world, spots: FLOODLIT }));
-scene.add(createFarLights({ lamps, buildings, world, spots: FLOODLIT }));       // světla města z dálky / z výšky
+const lit = [...FLOODLIT, ...stadiumLights(stadiumPitch(sport))];   // nasvícený kostel, stadion
+world.builders.push(createNightGlow({ lamps, buildings, world, spots: lit }));
+scene.add(createFarLights({ lamps, buildings, world, spots: lit }));       // světla města z dálky / z výšky
 world.builders.push(createPosts({ roads, buildings, bridges: bridgeInfo, world }));
 scene.add(createBuildings({ buildings, world, skip: landmarks.skip }));
 signLayer = createSigns({ signs, buildings, roads, world });

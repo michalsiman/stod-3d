@@ -6,7 +6,8 @@ import { SEASON } from './season.js';
 // Fotbal na stadionu: dva týmy po 11 (brankář, 4 obránci, 4 záložníci, 2 útočníci), rozhodčí a míč.
 // Jednoduchá hra: nejbližší hráč každého týmu běží k míči, ostatní drží rozestavení posunuté za míčem;
 // u míče hráč přihraje spoluhráči blíž k cizí brance nebo vystřelí; gól → výkop ze středu.
-// Hraje se ve dne (ne v noci, ne na sněhu), jen když je zapnuto „Lidé“ a kamera je blízko.
+// Hraje se i v noci pod osvětlením (4 stožáry s reflektory), ne na sněhu; jen když je zapnuto „Lidé“
+// a kamera je blízko.
 
 const C = (c) => new THREE.Color(c);
 const TEAMS = [
@@ -16,6 +17,17 @@ const TEAMS = [
 // rozestavení: [podíl délky od vlastní brány (0 = branková čára, 1 = půlka), podíl šířky −1…1]
 const FORM = [[0.04, 0], [0.32, -0.62], [0.28, -0.22], [0.28, 0.22], [0.32, 0.62],
   [0.62, -0.6], [0.58, -0.2], [0.58, 0.2], [0.62, 0.6], [0.9, -0.25], [0.9, 0.25]];
+// stožáry osvětlení: v rozích za běžeckou dráhou [podíl délky, vzdálenost za postranní čarou]
+const MASTS = [[-0.62, 12], [0.62, 12], [-0.62, -12], [0.62, -12]], MAST_H = 20;
+
+/** Kruhy světla na hřišti pro nightglow / farlights: [{ at, r, k, top }]. */
+export function stadiumLights(o) {
+  if (!o) return [];
+  const P = (a, b) => [o.cx + o.ux * a - o.uz * b, o.cz + o.uz * a + o.ux * b];
+  return [[-0.5, -0.4], [0.5, -0.4], [-0.5, 0.4], [0.5, 0.4], [0, 0]]
+    .map(([a, b]) => ({ at: P(a * o.ha, b * o.hb), r: 42, k: 0.42, top: MAST_H }));
+}
+
 const RUN = 6.2, JOG = 3.4, BALL_FRICTION = 2.6, G = 9.81;
 
 export function createFootball({ pitch, world, scene }) {
@@ -26,6 +38,40 @@ export function createFootball({ pitch, world, scene }) {
   const toWorld = (a, b) => [o.cx + o.ux * a - o.uz * b, o.cz + o.uz * a + o.ux * b];
   const parts = personParts();
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  // v noci jsou hráči nasvícení reflektory (jinak by byli černí)
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uNight = NIGHT.night;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uNight;')
+      .replace('#include <opaque_fragment>', 'outgoingLight += diffuseColor.rgb * vec3(.95, .97, 1.) * uNight * .75;\n#include <opaque_fragment>');
+  };
+  // stožáry osvětlení s rampou reflektorů natočenou na hřiště (vždy vidět, svítí v noci)
+  const lampMat = new THREE.MeshLambertMaterial({ color: 0xf4f6ff, emissive: 0xf4f6ff, emissiveIntensity: 0 });
+  const steel = new THREE.MeshLambertMaterial({ color: 0x9aa0a6 });
+  const masts = new THREE.Group();
+  for (const [fa, off] of MASTS) {
+    const a = fa * o.ha, b = Math.sign(off) * (o.hb + Math.abs(off));
+    const [x, z] = toWorld(a, b);
+    const y0 = world.heightAt(x, z);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, MAST_H, 8), steel);
+    pole.position.set(x, y0 + MAST_H / 2, z);
+    pole.castShadow = true;
+    const head = new THREE.Group();
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.4, 0.3), steel);
+    head.add(frame);
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.12), lampMat);
+      l.position.set(-1.6 + c * 1.07, -0.55 + r * 1.1, -0.2);
+      head.add(l);
+    }
+    head.position.set(x, y0 + MAST_H + 1, z);
+    // natočit čelem (−z hlavy) ke středu hřiště a sklopit dolů
+    head.lookAt(o.cx, y0 + MAST_H + 1, o.cz);
+    head.rotateY(Math.PI);
+    head.rotateX(-0.45);
+    masts.add(pole, head);
+  }
+  scene.add(masts);
   const N = 23;                                            // 22 hráčů + rozhodčí
   const mk = (geo, n) => {
     const im = new THREE.InstancedMesh(geo, mat, n);
@@ -159,7 +205,8 @@ export function createFootball({ pitch, world, scene }) {
     set(v) { enabled = v; if (!v) { group.visible = false; shown = false; } },
     /** Vrací true, když se něco pohnulo (překreslit). */
     update(dt, focus) {
-      const day = NIGHT.night.value < 0.5 && SEASON.snow.value < 0.5;
+      lampMat.emissiveIntensity = NIGHT.night.value * 1.6;
+      const day = SEASON.snow.value < 0.5;               // hraje se i v noci (pod světly), ne na sněhu
       const near = Math.hypot(focus.x - o.cx, focus.z - o.cz) < 900;
       const on = enabled && day && near;
       if (on !== shown) { group.visible = on; shown = on; if (!on) return true; }
