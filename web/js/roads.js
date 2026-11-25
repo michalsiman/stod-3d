@@ -66,11 +66,52 @@ function roadMaterial() {
   return material;
 }
 
+// vodorovné značení na hlavních silnicích (typ 0 a 1): plné vodicí čáry u krajnice, přerušovaná osa
+// (čára 3 m, mezera 6 m); v křižovatkách přerušené
+const MARK_TYPES = new Set([0, 1]);
+const EDGE_IN = 0.3, EDGE_W = 0.15, AXIS_W = 0.12, DASH = 3, GAP = 6, MARK_UP = 0.02;
+let markMaterial;
+function markMat() {
+  if (!markMaterial) {
+    markMaterial = new THREE.MeshLambertMaterial({ color: 0xf1f1ec, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
+  }
+  return markMaterial;
+}
+
 /** Rozdělí všechny úseky do dlaždic podle středu segmentu; vrátí builder pro World.
  *  bridges = prepareBridges(…) z bridges.js */
 export function createRoads({ roads, bridges, world }) {
   const T = world.T, W = world.W, H = world.H;
   const perTile = new Map();
+  // křižovatky: místa, kde se potkají aspoň tři konce / průchody silnic a cest
+  const pkey = (p) => `${Math.round(p[0] * 2)}_${Math.round(p[1] * 2)}`;
+  const ends = new Map();
+  for (const r of roads) {
+    if (r.t > 7) continue;
+    for (const p of [r.p[0], r.p[r.p.length - 1]]) ends.set(pkey(p), (ends.get(pkey(p)) || 0) + 1);
+  }
+  for (const r of roads) {
+    if (r.t > 7) continue;
+    for (let i = 1; i < r.p.length - 1; i++) if (ends.has(pkey(r.p[i]))) ends.set(pkey(r.p[i]), ends.get(pkey(r.p[i])) + 2);
+  }
+  const junctions = [];
+  for (const r of roads) {
+    if (r.t > 7) continue;
+    for (const p of r.p) if ((ends.get(pkey(p)) || 0) >= 3) junctions.push(p);
+  }
+  const JC = 32, jgrid = new Map();
+  for (const p of junctions) {
+    const k = `${Math.floor(p[0] / JC)}_${Math.floor(p[1] / JC)}`;
+    if (!jgrid.has(k)) jgrid.set(k, []);
+    jgrid.get(k).push(p);
+  }
+  const nearJunction = (x, z, r) => {
+    const cx = Math.floor(x / JC), cz = Math.floor(z / JC);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      for (const p of jgrid.get(`${cx + a}_${cz + b}`) || []) if (Math.hypot(p[0] - x, p[1] - z) < r) return true;
+    }
+    return false;
+  };
   for (const r of roads) {
     // převzorkovat na max. 3 m
     const pts = [];
@@ -93,21 +134,22 @@ export function createRoads({ roads, bridges, world }) {
       if (k !== key) {
         if (piece.length >= 2) {
           if (!perTile.has(key)) perTile.set(key, []);
-          perTile.get(key).push({ t: r.t, pts: piece });
+          perTile.get(key).push({ t: r.t, pts: piece, loop: key0(r) });
         }
         key = k; piece = [pts[i - 1]];
       }
       piece.push(pts[i]);
     }
     if (!perTile.has(key)) perTile.set(key, []);
-    perTile.get(key).push({ t: r.t, pts: piece });
+    perTile.get(key).push({ t: r.t, pts: piece, loop: key0(r) });
   }
+  function key0(r) { const a = r.p[0], b = r.p[r.p.length - 1]; return Math.hypot(a[0] - b[0], a[1] - b[1]) < 1; }
 
   return function build(tile, group) {
     const list = perTile.get(`${tile.i}_${tile.j}`);
     if (!list) return;
-    const pos = [], attr = [];
-    for (const { t, pts } of list) {
+    const pos = [], attr = [], marks = [];
+    for (const { t, pts, loop } of list) {
       const w = WIDTH[t], hw = w / 2, lift = LIFT[t];
       const n = pts.length;
       // normály s pokosem (miter) v lomech
@@ -145,6 +187,35 @@ export function createRoads({ roads, bridges, world }) {
         quad(C[i], R[i], C[i + 1], R[i + 1], 0, -1);
       }
       if (t === 8) rails(pts, C, pos, attr);
+      if (MARK_TYPES.has(t) && !loop) {
+        // body napříč: f = posun od osy v násobcích půlšířky (L = +1, R = −1)
+        const at = (i, f) => {
+          const [x, z] = pts[i];
+          const px = x + (L[i][0] - x) * f, pz = z + (L[i][2] - z) * f;
+          const d = i < n - 1 ? [pts[i + 1][0] - x, pts[i + 1][1] - z] : [x - pts[i - 1][0], z - pts[i - 1][1]];
+          const br = bridges.at(px, pz, w, d[0], d[1]);
+          return [px, (br ?? world.heightAt(px, pz)) + lift + MARK_UP, pz];
+        };
+        const lerp = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+        const strip = (i, f0, f1, u0 = 0, u1 = 1) => {
+          const a0 = lerp(at(i, f0), at(i + 1, f0), u0), a1 = lerp(at(i, f1), at(i + 1, f1), u0);
+          const b0 = lerp(at(i, f0), at(i + 1, f0), u1), b1 = lerp(at(i, f1), at(i + 1, f1), u1);
+          marks.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
+        };
+        const eIn = (hw - EDGE_IN - EDGE_W) / hw, eOut = (hw - EDGE_IN) / hw, ax = AXIS_W / 2 / hw;
+        for (let i = 0; i < n - 1; i++) {
+          const mx = (pts[i][0] + pts[i + 1][0]) / 2, mz = (pts[i][1] + pts[i + 1][1]) / 2;
+          if (nearJunction(mx, mz, hw + 5)) continue;          // v křižovatce bez čar
+          strip(i, eIn, eOut); strip(i, -eOut, -eIn);
+          // přerušovaná osa podle ujeté vzdálenosti
+          const s0 = S[i], s1 = S[i + 1], len = s1 - s0;
+          if (len <= 0) continue;
+          for (let d0 = Math.floor(s0 / (DASH + GAP)) * (DASH + GAP); d0 < s1; d0 += DASH + GAP) {
+            const a = Math.max(d0, s0), b = Math.min(d0 + DASH, s1);
+            if (b > a) strip(i, -ax, ax, (a - s0) / len, (b - s0) / len);
+          }
+        }
+      }
     }
     if (!pos.length) return;
     const g = new THREE.BufferGeometry();
@@ -166,5 +237,13 @@ export function createRoads({ roads, bridges, world }) {
     const m = new THREE.Mesh(g, roadMaterial());
     m.receiveShadow = true;
     group.add(m);
+    if (marks.length) {
+      const mg = new THREE.BufferGeometry();
+      mg.setAttribute('position', new THREE.Float32BufferAttribute(marks, 3));
+      mg.computeVertexNormals();
+      const mm = new THREE.Mesh(mg, markMat());
+      mm.receiveShadow = true;
+      group.add(mm);
+    }
   };
 }

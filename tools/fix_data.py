@@ -6,6 +6,8 @@ Opravy dat po build_data.py (spouštět po každém přegenerování; opakované
    z web/data/t/*.bin), okap nad nejvyšším místem terénu – jinak se dům na kopci „zanoří“ a ze svahu
    kouká jen střecha. Původní hodnoty zůstávají v "h0" (base, eave, ridge).
 2. Úpravy typů komunikací podle skutečnosti (ZABAGED je má jinak): úsek se najde podle polohy středu.
+3. Terén pod silnicemi (asfalt, panely): napříč vodorovně, podél vyhlazeně (násypy / zářezy), aby se vozovka
+   ve svahu nelámala uprostřed. Původní výšky jsou v cache/t_orig (počítá se vždy z nich).
 
 Spuštění:  python3 tools/fix_data.py
 """
@@ -15,6 +17,7 @@ from array import array
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent / "web" / "data"
+ORIG = Path(__file__).resolve().parent.parent / "cache" / "t_orig"
 
 # (x, z středu úseku, nový typ, důvod) – typy viz roads.js (2 ulice, 3 asfaltová cesta, 7 pěšina)
 ROAD_TYPES = [
@@ -66,6 +69,136 @@ def terrain():
         return ((at(r0, c0) * (1 - fc) + at(r0, c0 + 1) * fc) * (1 - fr)
                 + (at(r0 + 1, c0) * (1 - fc) + at(r0 + 1, c0 + 1) * fc) * fr) / 100
     return height
+
+
+FLAT_TYPES = (0, 1, 2, 3, 4)   # silnice, ulice, asfaltové a panelové cesty
+WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2]   # roads.js
+FLAT_IN, FLAT_OUT = 4.0, 12.0  # [m] od okraje vozovky: plně zarovnáno / plynulý přechod do terénu
+SMOOTH = 16.0                  # [m] vyhlazení podélného profilu (zůstane mírné houpání, ne hrboly)
+EXTRA_BRIDGES = [              # landmarks.js EXTRA_BRIDGES
+    [[67.2, -989.0], [60.1, -999.1], [53.2, -1007.7], [48.0, -1014.0]],
+    [[-490.5, -724.9], [-514, -739.5], [-537.7, -754.2]],
+    [[60.5, -917.8], [64, -920], [67, -922], [69, -924], [73.5, -927]],
+]
+
+
+def _seg_dist(px, pz, ax, az, bx, bz):
+    dx, dz = bx - ax, bz - az
+    L2 = dx * dx + dz * dz or 1e-9
+    t = max(0.0, min(1.0, ((px - ax) * dx + (pz - az) * dz) / L2))
+    return math.hypot(px - (ax + dx * t), pz - (az + dz * t)), t
+
+
+def flatten_roads():
+    """Terén pod silnicemi napříč do roviny. Pracuje se sítí 8 m, kterou web vykresluje (world.js)."""
+    import hashlib
+    import shutil
+    meta = json.loads((DATA / "meta.json").read_text())
+    T, step = meta["tile"], meta["t_step"]
+    N, S = T // step + 1, step * 2
+    W, H = meta["width"], meta["height"]
+    ORIG.mkdir(parents=True, exist_ok=True)
+    stamp = ORIG / "flattened.json"
+    done = json.loads(stamp.read_text()) if stamp.exists() else {}
+    tiles = {}
+    for f in sorted((DATA / "t").glob("*.bin")):
+        cur = f.read_bytes()
+        o = ORIG / f.name
+        # nově vygenerovaná dlaždice (build_data) → to jsou nové původní výšky
+        if not o.exists() or done.get(f.name) != hashlib.md5(cur).hexdigest():
+            shutil.copyfile(f, o)
+        a = array("H")
+        a.frombytes(o.read_bytes())
+        i, j = map(int, f.stem.split("_"))
+        tiles[(i, j)] = a
+
+    def node_h(gc, gr):                       # uzel sítě 8 m (globální index)
+        n8 = T // S
+        i, j = min(gc // n8, meta["nx"] - 1), min(gr // n8, meta["ny"] - 1)
+        c, r = gc - i * n8, gr - j * n8
+        return tiles[(i, j)][r * 2 * N + c * 2] / 100
+
+    def height(x, z):
+        c = min(max((x + W / 2) / S, 0), W / S - 0.001)
+        r = min(max((z + H / 2) / S, 0), H / S - 0.001)
+        c0, r0 = int(c), int(r)
+        fc, fr = c - c0, r - r0
+        return ((node_h(c0, r0) * (1 - fc) + node_h(c0 + 1, r0) * fc) * (1 - fr)
+                + (node_h(c0, r0 + 1) * (1 - fc) + node_h(c0 + 1, r0 + 1) * fc) * fr)
+
+    bridges = json.loads((DATA / "bridges.json").read_text()) + EXTRA_BRIDGES
+    bsegs = [(p[k], p[k + 1]) for p in bridges for k in range(len(p) - 1)]
+
+    def near_bridge(x, z):
+        return any(_seg_dist(x, z, a[0], a[1], b[0], b[1])[0] < 14 for a, b in bsegs
+                   if abs(a[0] - x) < 120 and abs(a[1] - z) < 120)
+
+    best = {}                                  # (gc, gr) → (váha, cílová výška, vzdálenost)
+    roads = json.loads((DATA / "roads.json").read_text())
+    for rd in roads:
+        t = rd["t"]
+        if t not in FLAT_TYPES:
+            continue
+        hw = WIDTH[t] / 2
+        pts = []
+        p = rd["p"]
+        for k in range(len(p) - 1):
+            (ax, az), (bx, bz) = p[k], p[k + 1]
+            n = max(1, math.ceil(math.hypot(bx - ax, bz - az) / 4))
+            pts += [(ax + (bx - ax) * q / n, az + (bz - az) * q / n) for q in range(n)]
+        pts.append(tuple(p[-1]))
+        if len(pts) < 2:
+            continue
+        raw = [height(x, z) for x, z in pts]
+        skip = [near_bridge(x, z) for x, z in pts]
+        # podélné vyhlazení (klouzavý průměr ±SMOOTH po 4 m)
+        k = int(SMOOTH / 4)
+        prof = [sum(raw[max(0, q - k):q + k + 1]) / len(raw[max(0, q - k):q + k + 1]) for q in range(len(raw))]
+        R = hw + FLAT_OUT
+        for q in range(len(pts) - 1):
+            if skip[q] or skip[q + 1]:
+                continue
+            (ax, az), (bx, bz) = pts[q], pts[q + 1]
+            c0 = int((min(ax, bx) - R + W / 2) // S)
+            c1 = int((max(ax, bx) + R + W / 2) // S) + 1
+            r0 = int((min(az, bz) - R + H / 2) // S)
+            r1 = int((max(az, bz) + R + H / 2) // S) + 1
+            for gr in range(max(r0, 0), min(r1, H // S) + 1):
+                z = -H / 2 + gr * S
+                for gc in range(max(c0, 0), min(c1, W // S) + 1):
+                    x = -W / 2 + gc * S
+                    d, tt = _seg_dist(x, z, ax, az, bx, bz)
+                    if d > R:
+                        continue
+                    e = d - hw - FLAT_IN
+                    w = 1.0 if e <= 0 else 0.5 + 0.5 * math.cos(math.pi * e / (FLAT_OUT - FLAT_IN))
+                    target = prof[q] + (prof[q + 1] - prof[q]) * tt
+                    old = best.get((gc, gr))
+                    if old is None or w > old[0] + 1e-6 or (abs(w - old[0]) < 1e-6 and d < old[2]):
+                        best[(gc, gr)] = (w, target, d)
+
+    n8 = T // S
+    changed, maxd = 0, 0.0
+    for (i, j), a in tiles.items():
+        out = array("H", a)
+        for r in range(n8 + 1):
+            for c in range(n8 + 1):
+                b = best.get((i * n8 + c, j * n8 + r))
+                if not b:
+                    continue
+                w, target, _ = b
+                idx = r * 2 * N + c * 2
+                h = a[idx] / 100
+                nh = h + w * (target - h)
+                out[idx] = max(0, min(65535, round(nh * 100)))
+                if abs(nh - h) > 0.05:
+                    changed += 1
+                    maxd = max(maxd, abs(nh - h))
+        data = out.tobytes()
+        (DATA / "t" / f"{i}_{j}.bin").write_bytes(data)
+        done[f"{i}_{j}.bin"] = hashlib.md5(data).hexdigest()
+    stamp.write_text(json.dumps(done))
+    print(f"silnice: terén zarovnán v {changed} uzlech sítě 8 m (nejvíc o {maxd:.1f} m)")
 
 
 def fit_buildings(height):
@@ -185,6 +318,7 @@ def fix_lamps():
 
 
 if __name__ == "__main__":
-    fit_buildings(terrain())
     fix_roads()
+    flatten_roads()
+    fit_buildings(terrain())
     fix_lamps()

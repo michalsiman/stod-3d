@@ -969,8 +969,9 @@ def main():
     (OUT / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")))
     # opravy po sestavení: budovy ve svahu, typy komunikací podle skutečnosti
     import fix_data
-    fix_data.fit_buildings(fix_data.terrain())
     fix_data.fix_roads()
+    fix_data.flatten_roads()
+    fix_data.fit_buildings(fix_data.terrain())
     fix_data.fix_lamps()
     log(f"hotovo za {time.time() - t0:.0f} s →", OUT)
 
