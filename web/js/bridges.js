@@ -214,8 +214,22 @@ export function createBridges({ info, world }) {
           const t = i / N, s = s0 + (s1 - s0) * t;
           const y = info.deckAtS(b, s) + 0.45 + st.rise * 4 * t * (1 - t);
           const c = at(s);
-          if (prev) prism(prev.c, c, n, v - 0.28, v + 0.28, prev.y - 0.32, prev.y + 0.32, y - 0.32, y + 0.32, k);
+          const tw = st.network ? 0.17 : 0.28, th = st.network ? 0.2 : 0.32;
+          if (prev) prism(prev.c, c, n, v - tw, v + tw, prev.y - th, prev.y + th, y - th, y + th, k);
           prev = { c, y };
+        }
+        // síťové závěsy (network arch): každý uzel oblouku dvěma šikmými lanky k mostovce
+        if (st.network) {
+          const N2 = 11, d = (s1 - s0) / 7, wk = new THREE.Color(0xeef1f2);
+          for (let i = 1; i < N2; i++) {
+            const t = i / N2, s = s0 + (s1 - s0) * t;
+            const ya = info.deckAtS(b, s) + 0.45 + st.rise * 4 * t * (1 - t) - 0.2;
+            for (const dir of [-1, 1]) {
+              const sd = THREE.MathUtils.clamp(s + dir * d, s0 + 0.5, s1 - 0.5);
+              prism(at(sd), at(s), n, v - 0.04, v + 0.04, info.deckAtS(b, sd) + 0.4, info.deckAtS(b, sd) + 0.48, ya - 0.04, ya + 0.04, wk);
+            }
+          }
+          continue;
         }
         // závěsy
         for (let s = s0 + 3; s < s1 - 2; s += 3) {

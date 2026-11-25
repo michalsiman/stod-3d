@@ -418,10 +418,15 @@ export const BRIDGE_STYLES = [
   { at: [-187, -929], type: 'arch', color: 0xf4f4f2, rail: 0xdfe3e6, sidewalk: 3.0, spans: [[0.03, 0.44, 4.2], [0.44, 0.97, 5.6]], rise: 6, pier: 0x9d988c },
   // lávka přes Radbuzu (Wikidata): zelená ocelová příhradová konstrukce s horním pásem do oblouku
   { at: [57.5, -999], type: 'truss', color: 0x3f8a6a, rail: 0x3f8a6a, extra: 0.9, rise: 1.4 },
+  // nová lávka cyklostezky u stadionu (podle výkresu města a fotky): zelený ocelový oblouk po obou
+  // stranách, síťové (zkřížené) bílé závěsy, bílé zábradlí, mostovka bez pilířů v řece
+  { at: [-514, -739.5], type: 'arch', color: 0x3f7a4c, rail: 0xe9ecee, extra: 0.6, spans: [[0.04, 0.96, 6.5]], rise: 6.5, network: true },
 ];
 // Mosty, které ZABAGED nemá (osa po pěšině přes vodu)
 export const EXTRA_BRIDGES = [
   [[67.2, -989.0], [60.1, -999.1], [53.2, -1007.7], [48.0, -1014.0]],
+  // lávka cyklostezky přes Radbuzu u stadionu
+  [[-490.5, -724.9], [-514, -739.5], [-537.7, -754.2]],
   // lávka pro pěší přes mlýnský náhon (ZABAGED ji nemá jako most)
   [[60.5, -917.8], [64, -920], [67, -922], [69, -924], [73.5, -927]],
 ];
