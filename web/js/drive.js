@@ -14,7 +14,7 @@ const MAX_SPEED = [46, 38, 26, 25, 21, 17, 13, 8, 0];            // [m/s] na dan
 const GRIP = [1, 1, 1, 1, 0.95, 0.8, 0.72, 0.7, 0.6];
 const SURFACE_NAME = ['silnice I. třídy', 'silnice', 'ulice', 'asfaltová cesta', 'panelová cesta', 'štěrková cesta',
   'polní cesta', 'pěšina', 'železnice'];
-const OFFROAD = { max: 11, grip: 0.6, rolling: 1.6 };
+const OFFROAD = { max: 16.7, grip: 0.6, rolling: 1.6 };
 const CELL = 32;
 const WHEELBASE = 2.6;
 
