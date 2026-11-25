@@ -10,6 +10,7 @@ import { createSports } from './js/sports.js';
 import { createNightGlow } from './js/nightglow.js';
 import { createFarLights } from './js/farlights.js';
 import { createRain } from './js/rain.js';
+import { createToon } from './js/toon.js';
 import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
 import { createFences } from './js/fences.js';
@@ -92,6 +93,7 @@ scene.add(hemi);
 let sunPos = { el: 40, az: 205 };
 let signLayer = null;
 const rain = createRain(scene);
+const toon = createToon(renderer, isCoarse);
 
 // stíny – přepínač (pamatuje si volbu); na mobilu ve výchozím stavu vypnuté
 let shadows = !isCoarse;
@@ -202,6 +204,15 @@ world.builders.push(() => traffic.refreshParked());
   bind('live-people', 'people', (v) => life.setPeople(v));
   bind('live-animals', 'animals', (v) => life.setAnimals(v));
   // déšť: ve výchozím stavu vypnutý; zvuk až po kliknutí (pravidla prohlížečů)
+  // kreslený styl (filtr přes celý obraz)
+  const tc = document.getElementById('toon');
+  tc.checked = opt('toon', false);
+  toon.set(tc.checked);
+  tc.addEventListener('change', () => {
+    try { localStorage.setItem('stod3d.toon', tc.checked ? '1' : '0'); } catch { /* ignorovat */ }
+    toon.set(tc.checked);
+    invalidate();
+  });
   const rc = document.getElementById('rain');
   rc.checked = opt('rain', false);
   rain.set(rc.checked, false);
@@ -512,7 +523,7 @@ renderer.setAnimationLoop(() => {
   const near = THREE.MathUtils.clamp(above * 0.03, 0.3, 25);
   if (Math.abs(near - camera.near) > camera.near * 0.15) { camera.near = near; camera.updateProjectionMatrix(); }
   sky.mesh.position.copy(camera.position);
-  renderer.render(scene, camera);
+  if (toon.on) toon.render(scene, camera); else renderer.render(scene, camera);
   labels?.render(scene, camera);
 });
 
