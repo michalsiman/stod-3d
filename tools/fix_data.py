@@ -257,8 +257,28 @@ def fix_roads():
             print(f"  ! úsek nenalezen: {why} ({x}, {z})")
         else:
             best["nc"] = 1
+    # cesty, které jsou cyklostezkou (OSM, bike.json): žádná motorová vozidla (ani traktory)
+    bike = DATA / "bike.json"
+    nbike = 0
+    if bike.exists():
+        segs = [(p[k], p[k + 1]) for p in json.loads(bike.read_text()).get("paths", []) for k in range(len(p) - 1)]
+        grid = {}
+        for a, c in segs:
+            for gx in range(int(min(a[0], c[0]) // 50) - 1, int(max(a[0], c[0]) // 50) + 2):
+                for gz in range(int(min(a[1], c[1]) // 50) - 1, int(max(a[1], c[1]) // 50) + 2):
+                    grid.setdefault((gx, gz), []).append((a, c))
+
+        def near(x, z):
+            return any(_seg_dist(x, z, a[0], a[1], c[0], c[1])[0] < 4 for a, c in grid.get((int(x // 50), int(z // 50)), []))
+        for r in R:
+            if r["t"] < 3 or r["t"] > 7 or r.get("nc"):
+                continue
+            pts = r["p"]
+            if len(pts) >= 2 and sum(near(x, z) for x, z in pts) >= 0.8 * len(pts):
+                r["nc"] = 1
+                nbike += 1
     path.write_text(json.dumps(R, separators=(",", ":")))
-    print(f"komunikace: {len(ROAD_TYPES)} úprav typu, {len(NO_CARS)} bez aut")
+    print(f"komunikace: {len(ROAD_TYPES)} úprav typu, {len(NO_CARS)} bez aut, {nbike} cyklostezek bez aut")
 
 
 def fix_lamps():

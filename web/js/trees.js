@@ -161,7 +161,8 @@ export function createTrees({ buf, meta, world, exclude, extra = [] }) {
         if (!(kind & 2) || r() < 0.35) {
           litter.push([new THREE.Matrix4().compose(p.set(x, g + 0.1, z), q, s.set(rad * 1.25, 1, rad * 1.25)), col.clone()]);
         }
-        if (!(kind & 2)) trunk.push([new THREE.Matrix4().compose(p.set(x, g - 0.2, z), q, s.set(1, Math.max(0.5, h - ch * 0.8), 1))]);
+        // kmen i u stromů v lese (jinak koruna visí ve vzduchu – koruna začíná až v ~40 % výšky)
+        trunk.push([new THREE.Matrix4().compose(p.set(x, g - 0.2, z), q, s.set(1, Math.max(0.5, h - ch * 0.8), 1))]);
       }
     }
     const grp = new THREE.Group();

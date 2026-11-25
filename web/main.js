@@ -17,6 +17,7 @@ import { createToon } from './js/toon.js';
 import { createHistory } from './js/history.js';
 import { createSquare, SQUARE_TREES, SQUARE_PARKING } from './js/square.js';
 import { createTaxiLot, inTaxiLot } from './js/taxis.js';
+import { createCemeteries } from './js/cemetery.js';
 import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
 import { createFences } from './js/fences.js';
@@ -59,7 +60,7 @@ const get = (p, kind = 'json') => fetch(`data/${p}`).then((r) => {
 
 const meta = await get('meta.json');
 loaderText.textContent = 'Načítám terén, budovy a cesty…';
-const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops, bike, parking, sport, rail] = await Promise.all([
+const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData, lamps, signs, stops, bike, cemeteries, parking, sport, rail] = await Promise.all([
   get('far_h.bin', 'bin'),
   new THREE.TextureLoader().loadAsync('data/far.png'),
   get('buildings.json'), get('roads.json'), get('bridges.json'), get('fences.json'), get('power.json'),
@@ -69,6 +70,7 @@ const [farH, farTex, buildings, roads, bridges, fences, power, treesBuf, poiData
   fetch('data/signs.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/stops.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
   fetch('data/bike.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+  fetch('data/cemetery.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/parking.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/sport.json').then((r) => (r.ok ? r.json() : [])).catch(() => []),
   fetch('data/rail.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
@@ -149,6 +151,7 @@ const sidewalks = createSidewalks({ roads, buildings, bridges: bridgeInfo, world
 world.builders.push(sidewalks.build);
 world.builders.push(createSquare({ world }));        // nám. ČSA: parkoviště, park s lavičkami
 world.builders.push(createTaxiLot({ world }));       // konec Sokolské: stání s taxíky
+world.builders.push(createCemeteries({ cemeteries, roads, buildings, world }));   // hroby na hřbitovech
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
 world.builders.push(createLamps({ lamps, world }));
