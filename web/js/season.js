@@ -9,6 +9,15 @@ uniform float uDoy;
 uniform float uSnow;          // 0 bez sněhu … 1 zasněženo
 // sněhová pokrývka: plochy shora bílé, mírně modravé ve stínu, tráva místy prosvítá
 vec3 snowy(vec3 c, float k){ float l = dot(c, vec3(.3, .55, .15)); return mix(c, vec3(.93, .95, .99) * (.86 + l * .5), uSnow * k); }
+// voda: v létě modrá, na podzim a v zimě zakalená šedozelená (olověná), na jaře při tání do hněda
+vec3 seasonWater(vec3 c){
+  float summer = smoothstep(105., 160., uDoy) * (1. - smoothstep(255., 315., uDoy));
+  float thaw = smoothstep(50., 75., uDoy) * (1. - smoothstep(95., 125., uDoy));
+  float l = dot(c, vec3(.3, .55, .15));
+  vec3 murky = hexc(92, 108, 104) * (.75 + l * 1.2);
+  vec3 brown = hexc(116, 112, 92) * (.75 + l * 1.2);
+  return mix(mix(murky, brown, thaw * .6), c, summer);
+}
 // listí na listnáčích: raší v dubnu, opadává koncem října a v listopadu
 float leafAmt(){ return smoothstep(100., 128., uDoy) * (1. - smoothstep(292., 320., uDoy)); }
 float autumnAmt(){ return smoothstep(262., 295., uDoy); }

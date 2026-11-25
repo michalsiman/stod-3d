@@ -226,6 +226,7 @@ world.builders.push(() => traffic.refreshParked());
   sc.addEventListener('change', () => {
     try { localStorage.setItem('stod3d.snow', sc.checked ? '1' : '0'); } catch { /* ignorovat */ }
     snow.set(sc.checked);
+    if (sc.checked && rc.checked) { rc.checked = false; rc.dispatchEvent(new Event('change')); }   // buď sníh, nebo déšť
     applyLight();
   });
   // historie: terén s historickou mapou / leteckým snímkem, současné vrstvy skryté
@@ -242,11 +243,12 @@ world.builders.push(() => traffic.refreshParked());
   };
   hs.addEventListener('change', applyHist);
   const rc = document.getElementById('rain');
-  rc.checked = opt('rain', false);
+  rc.checked = opt('rain', false) && !sc.checked;
   rain.set(rc.checked, false);
   rc.addEventListener('change', () => {
     try { localStorage.setItem('stod3d.rain', rc.checked ? '1' : '0'); } catch { /* ignorovat */ }
     rain.set(rc.checked);
+    if (rc.checked && sc.checked) { sc.checked = false; sc.dispatchEvent(new Event('change')); }   // buď déšť, nebo sníh
     applyLight();
   });
 }

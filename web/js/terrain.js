@@ -69,6 +69,7 @@ vec3 landColor(vec2 p){
     int g = int(t.g * 255. + .5), v = (g % 64) % 3;
     return snowy(seasonField(min(g / 64, 2), fieldColor(0, v), fieldColor(1, v), fieldColor(2, v)), .95);
   }
+  if (cls == 11) return seasonWater(classColor(11));
   return snowy(landBase(cls), cls == 11 ? 0. : cls == 5 || cls == 6 || cls == 7 ? .55 : cls == 9 || cls == 10 || cls == 17 || cls == 20 ? .75 : .95);
 }
 vec3 landBase(int cls){
@@ -102,7 +103,8 @@ export function createTerrainMaterials({ farTex, meta }) {
           float l = dot(c, vec3(.3, .55, .15));
           c = mix(c, hexc(158, 120, 88) * (.6 + l * 1.6), yel * plow * .85);
           c = mix(c, hexc(118, 156, 76) * (.6 + l * 1.4), yel * sprout * .7);
-          c = snowy(c, c.b > c.g * 1.05 && c.b > c.r ? 0. : .9);
+          float water = smoothstep(.0, .04, c.b - c.g) * smoothstep(.0, .06, c.b - c.r);
+          c = mix(snowy(c, .9), seasonWater(c), water);
           diffuseColor.rgb = c; }`);
   };
 
