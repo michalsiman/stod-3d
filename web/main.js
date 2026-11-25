@@ -367,7 +367,7 @@ document.body.dataset.mode = mode;
 // sbalení menu (na mobilu ve výchozím stavu sbalené)
 {
   const panel = document.getElementById('title'), btn = document.getElementById('panel-collapse');
-  const set = (open) => { panel.classList.toggle('collapsed', !open); btn.setAttribute('aria-expanded', String(open)); };
+  const set = (open) => { panel.classList.toggle('collapsed', !open); btn.setAttribute('aria-expanded', String(open)); document.body.classList.toggle('menu-open', open); };
   set(!isCoarse);
   btn.onclick = () => set(panel.classList.contains('collapsed'));
 }

@@ -491,3 +491,13 @@ body:not([data-mode="orbit"]) #map-ctl { display: none; }
 
 #credits .hist-credit { display: none; }
 body.history #credits .hist-credit { display: inline; }
+
+/* menu na mobilu: výška podle skutečně viditelné části obrazovky (bez lišt prohlížeče), posouvání prstem */
+#title { max-height: calc(100vh - 28px); max-height: calc(100dvh - 24px); overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+@media (max-width: 600px) {
+  #title { max-height: calc(100dvh - 24px); }
+  #title .panel-body { padding-bottom: 12px; }
+  /* rozbalené menu: schovat přepínač Mapa/Auto a tlačítka u kraje mapy */
+  body.menu-open #modes, body.menu-open #map-ctl, body.menu-open #help-toggle { display: none; }
+}
