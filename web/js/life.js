@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildGraph, Track } from './traffic.js';
-import { personParts, deerParts, hareParts, birdParts, cyclistParts } from './models.js';
+import { personParts, deerParts, hareParts, birdParts, cyclistParts, cowParts } from './models.js';
 import { SIDEWALK_TOP } from './sidewalks.js';
 
 // Život v okolí kamery: lidé chodí po chodnících a pěšinách v obcích a čekají na zastávkách,
@@ -340,6 +340,25 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
   const birdBody = pool(group, bpS.body, NB, { shadow: false }), birdWing = pool(group, bpS.wing, NB * 2, { shadow: false, both: true });
   const buzBody = pool(group, bpL.body, 2, { shadow: true }), buzWing = pool(group, bpL.wing, 4, { shadow: true, both: true });
   const deer = [], hares = [], flocks = [], buzzards = [];
+  // krávy na pastvinách u JZD jihovýchodně od Stodu (podle ortofota): [x, z, poloměr, počet]
+  const PASTURES = [[880, -260, 110, 14], [620, -60, 55, 7], [880, 160, 70, 8]];
+  const COW_COAT = [[0xf2f0ea, 0x1e1d1d], [0xf2f0ea, 0x1e1d1d], [0xf0e8dc, 0x8a3e22], [0x7a4a2c, 0x5e3620]].map(([a, b]) => [C(a), C(b)]);
+  const NCOW = PASTURES.reduce((a, p) => a + p[3], 0);
+  const cp2 = cowParts();
+  const cowBody = pool(group, cp2.body, NCOW, { color: true }), cowSpots = pool(group, cp2.spots, NCOW, { color: true });
+  const cowFixed = pool(group, cp2.fixed, NCOW), cowHead = pool(group, cp2.head, NCOW, { color: true }), cowLeg = pool(group, cp2.leg, NCOW * 4, { color: true });
+  const cows = [];
+  PASTURES.forEach(([px, pz, pr, n], pi) => {
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * 6.28, d = Math.sqrt(Math.random()) * pr * 0.8;
+      const coat = rnd(COW_COAT), i = cows.length;
+      cows.push({ x: px + Math.cos(a) * d, z: pz + Math.sin(a) * d, yaw: Math.random() * 6.28, state: 'graze', t: Math.random() * 10,
+        v: 0, neck: -0.9, phase: Math.random() * 6, past: pi });
+      cowBody.im.setColorAt(i, coat[0]); cowSpots.im.setColorAt(i, coat[Math.random() < 0.85 ? 1 : 0]); cowHead.im.setColorAt(i, coat[0]);
+      for (let l = 0; l < 4; l++) cowLeg.im.setColorAt(i * 4 + l, coat[0]);
+    }
+  });
+  for (const pl of [cowBody, cowSpots, cowHead, cowLeg]) pl.im.instanceColor.needsUpdate = true;
 
   function openSpot(x, z, { trees = 22, build = 0 } = {}) {
     if (around(bcell, x, z, 1) > build) return false;
@@ -504,6 +523,44 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       deerBody.hideFrom(di); deerNeck.hideFrom(di); deerLeg.hideFrom(di * 4);
       deerBody.im.instanceMatrix.needsUpdate = deerNeck.im.instanceMatrix.needsUpdate = deerLeg.im.instanceMatrix.needsUpdate = true;
 
+      // krávy: pasou se, občas popojdou nebo zvednou hlavu; drží se své pastviny
+      const nearCows = near && PASTURES.some(([px, pz]) => Math.hypot(px - focus.x, pz - focus.z) < 1500);
+      for (let ci = 0; ci < cows.length; ci++) {
+        const c = cows[ci];
+        if (!nearCows || !detailAt(c.x, c.z)) {
+          cowBody.im.setMatrixAt(ci, cowBody.zero); cowSpots.im.setMatrixAt(ci, cowBody.zero); cowFixed.im.setMatrixAt(ci, cowBody.zero); cowHead.im.setMatrixAt(ci, cowBody.zero);
+          for (let l = 0; l < 4; l++) cowLeg.im.setMatrixAt(ci * 4 + l, cowBody.zero);
+          continue;
+        }
+        c.t -= dt;
+        if (c.t <= 0) {
+          const r = Math.random();
+          c.state = r < 0.6 ? 'graze' : r < 0.82 ? 'walk' : 'look';
+          c.t = c.state === 'walk' ? 2 + Math.random() * 4 : 5 + Math.random() * 12;
+          const [px, pz, pr] = PASTURES[c.past];
+          if (c.state === 'walk') {
+            c.yaw += (Math.random() - 0.5) * 1.5;
+            if (Math.hypot(c.x - px, c.z - pz) > pr * 0.75) c.yaw = Math.atan2(-(pz - c.z), px - c.x);   // zpátky do pastviny
+          }
+        }
+        const sp = c.state === 'walk' ? 0.55 : 0;
+        c.v += (sp - c.v) * Math.min(1, dt * 2);
+        c.x += Math.cos(c.yaw) * c.v * dt; c.z -= Math.sin(c.yaw) * c.v * dt;
+        c.neck += ((c.state === 'graze' ? -0.95 : c.state === 'look' ? 0.15 : -0.25) - c.neck) * Math.min(1, dt * 1.5);
+        c.phase += dt * (1 + c.v * 3);
+        q4.setFromAxisAngle(up, c.yaw);
+        m4.compose(v3.set(c.x, heightAt(c.x, c.z), c.z), q4, s3);
+        cowBody.im.setMatrixAt(ci, m4); cowSpots.im.setMatrixAt(ci, m4); cowFixed.im.setMatrixAt(ci, m4);
+        const hm = new THREE.Matrix4().compose(new THREE.Vector3(0.95, 1.3, 0), new THREE.Quaternion().setFromAxisAngle(ax, c.neck), s3);
+        cowHead.im.setMatrixAt(ci, m4.clone().multiply(hm));
+        const amp = c.v > 0.1 ? 0.35 : 0;
+        [[0.7, 0.24, 0], [0.7, -0.24, Math.PI], [-0.7, 0.24, Math.PI], [-0.7, -0.24, 0]].forEach(([lx, lz, ph], l) => {
+          const lm = new THREE.Matrix4().compose(new THREE.Vector3(lx, 0.74, lz), new THREE.Quaternion().setFromAxisAngle(ax, Math.sin(c.phase + ph) * amp), s3);
+          cowLeg.im.setMatrixAt(ci * 4 + l, m4.clone().multiply(lm));
+        });
+      }
+      for (const pl of [cowBody, cowSpots, cowFixed, cowHead, cowLeg]) pl.im.instanceMatrix.needsUpdate = true;
+
       // zajíci
       for (const h of [...hares]) if (!near || Math.hypot(h.x - focus.x, h.z - focus.z) > 600) hares.splice(hares.indexOf(h), 1);
       if (spawn && hares.length < NH && Math.random() < 0.4) spawnHare(focus.x, focus.z, cam);
@@ -598,12 +655,12 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     legs.im.setMatrixAt(i * 2, torso.zero); legs.im.setMatrixAt(i * 2 + 1, torso.zero);
   }
   const peopleMeshes = [torso.im, head.im, legs.im, cBike.im, cFixed.im, cTorso.im, cLeg.im];
-  const animalMeshes = [deerBody.im, deerNeck.im, deerLeg.im, hareBody.im, birdBody.im, birdWing.im, buzBody.im, buzWing.im];
+  const animalMeshes = [deerBody.im, deerNeck.im, deerLeg.im, hareBody.im, birdBody.im, birdWing.im, buzBody.im, buzWing.im, cowBody.im, cowSpots.im, cowFixed.im, cowHead.im, cowLeg.im];
   return {
     group, update,
     setPeople(v) { showPeople = v; for (const m of peopleMeshes) m.visible = v; if (!v) { people.length = 0; waiting.length = 0; cyclists.length = 0; } },
     setAnimals(v) { showAnimals = v; for (const m of animalMeshes) m.visible = v; if (!v) { deer.length = 0; hares.length = 0; flocks.length = 0; buzzards.length = 0; } },
     get active() { return showPeople || showAnimals; },
-    debug: { people, deer, hares, flocks, waiting, cyclists },
+    debug: { people, deer, hares, flocks, waiting, cyclists, cows },
   };
 }

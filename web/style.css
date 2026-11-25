@@ -58,7 +58,14 @@ kbd {
   background: #1f2724; transition: opacity 0.6s; z-index: 10;
 }
 #loader.done { opacity: 0; pointer-events: none; }
-.loader-box { text-align: center; width: 240px; }
+.loader-box { text-align: center; width: min(340px, calc(100vw - 40px)); }
+.loader-box .loader-note { margin: 16px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.loader-box .loader-note b { color: var(--text); font-weight: 600; }
+#night-tip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 4; width: min(420px, calc(100vw - 24px));
+  padding: 14px 16px; border-radius: 16px; font-size: 14px; line-height: 1.45; }
+#night-tip[hidden] { display: none; }
+#night-tip .nt-btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+#night-tip .nt-day { background: var(--accent); color: var(--accent-ink); border: 0; }
 .loader-box h1 { margin: 0 0 6px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
 .loader-box p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
 .bar { height: 3px; background: rgba(255, 255, 255, 0.15); border-radius: 2px; overflow: hidden; }

@@ -218,12 +218,21 @@ export class Track {
 const laneOffset = (t) => Math.min(WIDTH[t] / 4, 1.9);
 
 // ---------------------------------------------------------------- vykreslení: instance po druzích
+const BEAM_KINDS = new Set(['car', 'hatch', 'suv', 'combi', 'van', 'truck', 'semi', 'bus', 'tractor']);
+
 function createPools(scene, caps, { lamps = true } = {}) {
   const mats = {
     // stejný posun hloubky jako silnice (roads.js), jinak silnice zakrývá spodek kol
     paint: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }),
     fixed: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }),
     lamp: new THREE.MeshBasicMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }),
+    // kužel světla: průhledný, sčítá se, slábne do dálky (atribut alpha); síla podle noci (uniform)
+    beam: new THREE.ShaderMaterial({
+      uniforms: { k: { value: 0 } },
+      vertexShader: 'attribute float alpha; varying float vA; void main(){ vA = alpha; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.); }',
+      fragmentShader: 'uniform float k; varying float vA; void main(){ gl_FragColor = vec4(vec3(1., .93, .75) * vA * vA * vA * k, 1.); }',
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24,
+    }),
   };
   const pools = {};
   const zero = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -239,6 +248,21 @@ function createPools(scene, caps, { lamps = true } = {}) {
       im.userData.slot = k;
       for (let i = 0; i < cap; i++) im.setMatrixAt(i, zero);
       if (k.startsWith('paint')) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3);
+      scene.add(im);
+      meshes.push(im);
+    }
+    // světelný kužel reflektorů na silnici před vozidlem (v noci)
+    if (lamps && BEAM_KINDS.has(kind)) {
+      const L = kind === 'tractor' ? 10 : 18, x0 = m.nose - 0.2;
+      const g = new THREE.BufferGeometry();
+      const pos = [x0, 0.06, -0.8, x0 + L, 0.06, -3.2, x0 + L, 0.06, 3.2, x0, 0.06, -0.8, x0 + L, 0.06, 3.2, x0, 0.06, 0.8];
+      const al = [1, 0, 0, 1, 0, 1];
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('alpha', new THREE.Float32BufferAttribute(al, 1));
+      const im = new THREE.InstancedMesh(g, mats.beam, cap);
+      im.frustumCulled = false;
+      im.userData.slot = 'beam';
+      for (let i = 0; i < cap; i++) im.setMatrixAt(i, zero);
       scene.add(im);
       meshes.push(im);
     }
@@ -1098,7 +1122,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     updateTrains(dt);
     // světla: ve dne tlumená, v noci svítí
     const night = NIGHT.night.value;
-    pool.mats.lamp.color.setScalar(0.55 + 0.45 * night);
+    pool.mats.lamp.color.setScalar(0.75 + 0.25 * night);          // světla svítí i ve dne, v noci naplno
+    pool.mats.beam.uniforms.k.value = Math.min(1, night * 1.4) * 0.38;
     pool.flush();
     return true;
   }

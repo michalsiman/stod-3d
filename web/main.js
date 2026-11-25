@@ -507,5 +507,23 @@ createReport({
   mark: (name, x, z) => labels?.highlight(name, x, z), onChange: invalidate,
 });
 createTimeControls({ onChange: (pos) => { sunPos = pos; applyLight(); } });
+// za tmy nebo soumraku nabídnout přepnutí na den (mapa se otevírá v aktuálním čase)
+{
+  const tip = document.getElementById('night-tip');
+  if (tip && sunPos.el < -2 && document.getElementById('time-live')?.checked) {
+    tip.querySelector('.nt-when').textContent = sunPos.el > -8 ? 'šero' : 'tma';
+    tip.hidden = false;
+    const close = () => { tip.hidden = true; };
+    tip.querySelector('.nt-keep').onclick = close;
+    tip.querySelector('.nt-day').onclick = () => {
+      const min = document.getElementById('time-min');
+      document.getElementById('time-live').checked = false;
+      min.value = 780;                                   // 13:00 téhož dne
+      min.dispatchEvent(new Event('input'));
+      close();
+    };
+    setTimeout(close, 25000);
+  }
+}
 applyShadows();
 document.getElementById('loader').classList.add('done');
