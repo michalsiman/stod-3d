@@ -308,16 +308,64 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   const touch = document.createElement('div');
   touch.id = 'drive-touch';
   touch.hidden = true;
-  touch.innerHTML = `<div class="dt-steer"><button data-k="ArrowLeft">◀</button><button data-k="ArrowRight">▶</button></div>
-    <div class="dt-pedals"><button data-k="ArrowDown" class="brake">▼</button><button data-k="ArrowUp" class="gas">▲</button></div>`;
+  // telefon: volant vlevo dole (jeden prst – otáčení jako skutečným volantem, puštěný se vrátí rovně),
+  // vpravo velký plyn (puštěný = auto rychle zabrzdí) a menší tlačítko couvání
+  const WHEEL_SVG = `<svg viewBox="-50 -50 100 100" aria-hidden="true">
+    <circle r="44" fill="none" stroke="currentColor" stroke-width="9"/>
+    <circle r="11" fill="currentColor"/>
+    <path d="M-42 -4 L-11 -4 L-6 9 L-4 42 L4 42 L6 9 L11 -4 L42 -4" fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/>
+    <rect x="-3" y="-50" width="6" height="12" rx="2" fill="#e8b04a"/></svg>`;
+  touch.innerHTML = `<div class="dt-wheel" title="Volant">${WHEEL_SVG}</div>
+    <div class="dt-pedals"><button data-k="ArrowDown" class="brake" title="Couvání">R</button>
+      <button data-k="ArrowUp" class="gas" title="Plyn"><span>PLYN</span></button></div>`;
   document.body.appendChild(touch);
   const touchKeys = new Set();
   touch.querySelectorAll('button').forEach((b) => {
-    const on = (e) => { e.preventDefault(); touchKeys.add(b.dataset.k); b.classList.add('on'); sound.start(); };
+    const on = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* bez zachycení */ } touchKeys.add(b.dataset.k); b.classList.add('on'); sound.start(); };
     const off = (e) => { e.preventDefault(); touchKeys.delete(b.dataset.k); b.classList.remove('on'); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off);
-    b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
+    b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
   });
+  // volant: úhel prstu kolem středu volantu oproti místu, kde se ho prst chytil; ±150° = plný rejd
+  const wheel = touch.querySelector('.dt-wheel');
+  const WHEEL_MAX = 150;
+  let wheelId = null, grabAng = 0, wheelBase = 0, wheelAng = 0;
+  st.touchSteer = 0;
+  const angAt = (e) => {
+    const r = wheel.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+  };
+  const showWheel = () => { wheel.firstElementChild.style.transform = `rotate(${wheelAng}deg)`; };
+  wheel.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    wheelId = e.pointerId;
+    try { wheel.setPointerCapture(e.pointerId); } catch { /* bez zachycení */ }
+    grabAng = angAt(e); wheelBase = wheelAng;
+    wheel.classList.add('on'); sound.start();
+  });
+  wheel.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== wheelId) return;
+    let d = angAt(e) - grabAng;
+    d = ((d + 540) % 360) - 180;                              // přes ±180° bez skoku
+    if (Math.abs(d) > 120) { grabAng += d; wheelBase += d; d = 0; }  // dlouhé otáčení: chytit znovu
+    wheelAng = THREE.MathUtils.clamp(wheelBase + d, -WHEEL_MAX, WHEEL_MAX);
+    st.touchSteer = -wheelAng / WHEEL_MAX;                    // doprava (po směru hodin) = zatáčet doprava
+    showWheel();
+  });
+  const wheelOff = (e) => {
+    if (e.pointerId !== wheelId) return;
+    wheelId = null; wheel.classList.remove('on');
+  };
+  wheel.addEventListener('pointerup', wheelOff);
+  wheel.addEventListener('pointercancel', wheelOff);
+  wheel.addEventListener('lostpointercapture', wheelOff);
+  // puštěný volant se sám vrací rovně (jako u auta)
+  const wheelReturn = (dt) => {
+    if (wheelId !== null || !wheelAng) return;
+    wheelAng = Math.abs(wheelAng) < 2 ? 0 : wheelAng - Math.sign(wheelAng) * Math.min(Math.abs(wheelAng), 420 * dt);
+    st.touchSteer = -wheelAng / WHEEL_MAX;
+    showWheel();
+  };
   const $ = (s) => hud.querySelector(s);
   hud.querySelector('[data-act=view]').onclick = () => cycleView();
   hud.querySelector('[data-act=goal]').onclick = () => newGoal();
@@ -554,6 +602,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     goalEl.hidden = true;
     touch.hidden = true;
     touchKeys.clear();
+    wheelId = null; wheelAng = 0; st.touchSteer = 0; showWheel();
     sound.stop();
     return { x: st.x, y: st.y, z: st.z, heading: st.heading };
   }
@@ -588,7 +637,10 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     const k = (...c) => c.some((x) => keys.has(x) || touchKeys.has(x));
     const gas = k('KeyW', 'ArrowUp') ? 1 : 0;
     const brake = k('KeyS', 'ArrowDown') ? 1 : 0;
-    const steerIn = (k('KeyA', 'ArrowLeft') ? 1 : 0) - (k('KeyD', 'ArrowRight') ? 1 : 0);
+    const touchOn = !touch.hidden;
+    if (touchOn) wheelReturn(dt);
+    const keySteer = (k('KeyA', 'ArrowLeft') ? 1 : 0) - (k('KeyD', 'ArrowRight') ? 1 : 0);
+    const steerIn = keySteer || (touchOn ? st.touchSteer : 0);
     const hand = k('Space');
 
     const surf = surfaceAt(st.x, st.z);
@@ -599,9 +651,12 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
 
     // podélně: plyn, brzda/couvání, odpor, svah
     let v = st.v;
-    if (gas) v += (v < 0 ? 9 : 4.2 * (1 - Math.max(0, v) / (maxV * 1.15))) * dt;
-    if (brake) v -= (v > 0.3 ? 9 : 3.2) * dt;
-    if (!brake && v < 0 && !gas) v = Math.min(0, v + 3 * dt);
+    // rozjezd dvakrát svižnější než dřív (4,2 → 8,4 m/s²)
+    if (gas) v += (v < 0 ? 12 : 8.4 * (1 - Math.max(0, v) / (maxV * 1.15))) * dt;
+    if (brake) v -= (v > 0.3 ? 9 : 4.5) * dt;
+    if (!brake && v < 0 && !gas) v = Math.min(0, v + (touchOn ? 9 : 3) * dt);
+    // telefon: puštěný plyn = auto rychle zabrzdí (ne na místě, ~1 s z 30 km/h)
+    if (touchOn && !gas && !brake && v > 0) v = Math.max(0, v - 7.5 * dt);
     if (hand) v -= Math.sign(v) * Math.min(Math.abs(v), 10 * dt);
     v -= Math.sign(v) * Math.min(Math.abs(v), (rolling + 0.0016 * v * v) * dt);
     v -= 9.81 * Math.sin(st.pitch) * dt * 0.6;
