@@ -9,7 +9,7 @@ import { SIDEWALK_TOP } from './sidewalks.js';
 
 const WIDTH = [8.5, 6.5, 5.0, 3.5, 3.2, 3.0, 2.6, 1.2, 4.2, 2.8];
 const LIFT = [0.34, 0.34, 0.34, 0.34, 0.31, 0.3, 0.29, 0.28, 0.36, 0.32];
-const WALK_TYPES = new Set([1, 2, 3, 4, 7]);
+const WALK_TYPES = new Set([0, 1, 2, 3, 4, 5, 6, 7]);
 const C = (h) => new THREE.Color(h);
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 const SHIRTS = [0x2f4e7a, 0xb13a32, 0xe2dccb, 0x3d6b45, 0x262a30, 0x8b5e9c, 0xd9a13a, 0x6d7b8a, 0xf0f0ee, 0x9c3f5d, 0x1f7a7a].map(C);
@@ -116,8 +116,28 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     }
     return null;
   }
+  // chodci jen po chodnících (u vozovek) a po pěšinách / polních cestách; po silnici nikdy
+  const walkOff = (t) => (t === 7 ? 0.25 : t <= 3 ? WIDTH[t] / 2 + 1.1 : WIDTH[t] / 2 - 0.45);
+  /** Strana (1 vpravo, −1 vlevo ve směru a→b), kde se dá jít, nebo 0. */
+  function walkSide(a, e, pref) {
+    if (e.t >= 4) return pref;
+    if (!sidewalks) return 0;
+    const ax = walkG.X[a], az = walkG.Z[a], bx = walkG.X[e.to], bz = walkG.Z[e.to];
+    if (bridges.at((ax + bx) / 2, (az + bz) / 2, WIDTH[e.t], bx - ax, bz - az) !== null) return pref;   // po chodníku mostu
+    const L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L, o = walkOff(e.t);
+    for (const sd of [pref, -pref]) {
+      let ok = true;
+      const k = Math.max(2, Math.ceil(L / 3));
+      for (let q = 1; q < k; q++) {
+        const f = q / k, x = ax + (bx - ax) * f + nx * o * sd, z = az + (bz - az) * f + nz * o * sd;
+        if (!sidewalks.at(x, z) || sidewalks.onRoad(x, z)) { ok = false; break; }
+      }
+      if (ok) return sd;
+    }
+    return 0;
+  }
   function spawnWalker(fx, fz, camPos, minCam) {
-    for (let tries = 0; tries < 20; tries++) {
+    for (let tries = 0; tries < 25; tries++) {
       const hp = Math.random() < 0.7 ? hotPoint(fx, fz) : null;
       const x = hp ? hp[0] : fx + (Math.random() * 2 - 1) * 450, z = hp ? hp[1] : fz + (Math.random() * 2 - 1) * 450;
       if (!hp && around(homes, x, z) < 5) continue;
@@ -126,24 +146,52 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       const e = rnd(walkG.adj[a]);
       if (!detailAt(walkG.X[a], walkG.Z[a])) continue;
       if (camPos && Math.hypot(walkG.X[a] - camPos.x, walkG.Z[a] - camPos.z) < minCam) continue;
-      const side = Math.random() < 0.5 ? 1 : -1;
-      // po chodníku (střed 1,1 m za okrajem vozovky), na cestách bez chodníku při kraji
-      const off = (t) => (t === 7 ? 0.25 : t <= 2 ? WIDTH[t] / 2 + 1.1 : WIDTH[t] / 2 - 0.45) * side;
+      const side = walkSide(a, e, Math.random() < 0.5 ? 1 : -1);
+      if (!side) continue;
       const tr = new Track();
-      tr.push(walkG.X[a], walkG.Z[a], off(e.t), e.t);
-      tr.push(walkG.X[e.to], walkG.Z[e.to], off(e.t), e.t);
-      return { tr, s: Math.random() * tr.len, prev: a, node: e.to, side, off, v: 1.1 + Math.random() * 0.5, phase: Math.random() * 6, pause: 0 };
+      tr.push(walkG.X[a], walkG.Z[a], walkOff(e.t) * side, e.t);
+      tr.push(walkG.X[e.to], walkG.Z[e.to], walkOff(e.t) * side, e.t);
+      if (tr.len < 10) continue;
+      return { tr, s: Math.random() * (tr.len - 8), prev: a, node: e.to, side, v: 1.1 + Math.random() * 0.5, phase: Math.random() * 6, pause: 0 };
     }
     return null;
   }
   function extendWalker(p) {
     while (p.tr.len - p.s < 30) {
-      const opts = walkG.adj[p.node].filter((e) => e.to !== p.prev && around(homes, walkG.X[e.to], walkG.Z[e.to]) >= 3);
-      const e = opts.length ? rnd(opts) : walkG.adj[p.node].find((q) => q.to === p.prev);
-      if (!e) return false;
-      if (!opts.length) p.side = -p.side;           // slepá ulice: otočit a jít po druhé straně
+      // přejít na druhou stranu jde jen tam, kde se dá vložit krátký přechod u křižovatky
+      const n0 = p.tr.n, lastL = n0 >= 2 ? p.tr.cum[n0 - 1] - p.tr.cum[n0 - 2] : 0;
+      const canCross = (e) => n0 >= 2 && p.s < p.tr.cum[n0 - 1] - 4 && lastL > 5
+        && Math.hypot(walkG.X[e.to] - walkG.X[p.node], walkG.Z[e.to] - walkG.Z[p.node]) > 5;
+      const opts = [];
+      for (const e of walkG.adj[p.node]) {
+        if (e.to === p.prev) continue;
+        const sd = walkSide(p.node, e, p.side);
+        if (sd && (sd === p.side || canCross(e))) opts.push([e, sd]);
+      }
+      let pick = opts.length ? rnd(opts) : null;
+      if (!pick) {                                  // slepý konec chodníku: otočit (zůstat na stejném chodníku)
+        const back = walkG.adj[p.node].find((q) => q.to === p.prev);
+        const sd = back && walkSide(p.node, back, -p.side);
+        if (!sd || (sd !== -p.side && !canCross(back))) return false;
+        pick = [back, sd];
+      }
+      const [e, sd] = pick;
+      const tr = p.tr, n = tr.n;
+      const sameWalk = e.to === p.prev ? sd === -p.side : sd === p.side;
+      if (!sameWalk && n >= 2 && p.s < tr.cum[n - 1] - 4) {
+        // přejít na druhou stranu krátce u křižovatky (jako po přechodu), ne šikmo přes celý úsek
+        const [px, pz] = tr.P[n - 2], [nx, nz] = tr.P[n - 1], L = Math.hypot(nx - px, nz - pz);
+        const bx = walkG.X[e.to], bz = walkG.Z[e.to], M = Math.hypot(bx - nx, bz - nz);
+        if (L > 5 && M > 5) {
+          const oldO = tr.o[n - 2], oldT = tr.t[n - 2];
+          tr.pop();
+          tr.push(nx - (nx - px) / L * 2.5, nz - (nz - pz) / L * 2.5, oldO, oldT, oldO);
+          tr.push(nx + (bx - nx) / M * 2.5, nz + (bz - nz) / M * 2.5, walkOff(e.t) * sd, e.t, walkOff(e.t) * sd);
+        }
+      }
+      p.side = sd;
       p.prev = p.node; p.node = e.to;
-      p.tr.push(walkG.X[e.to], walkG.Z[e.to], p.off(e.t), e.t);
+      p.tr.push(walkG.X[e.to], walkG.Z[e.to], walkOff(e.t) * sd, e.t);
     }
     if (p.s > 200) { const d = p.tr.trim(p.s - 20); p.s -= d; }
     return true;
@@ -390,7 +438,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
         p.tr.at(p.s, P);
         const x = P[0], z = P[1];
         const br = bridges.at(x, z, 2, P[3], P[4]);
-        const y = br !== null ? br + 0.5 : heightAt(x, z) + (P[2] <= 2 && sidewalks?.at(x, z) ? SIDEWALK_TOP : P[2] <= 6 && P[2] !== 7 ? 0.36 : 0.3);
+        const y = br !== null ? br + 0.5 : heightAt(x, z) + (P[2] <= 3 ? SIDEWALK_TOP : P[2] <= 6 ? 0.33 : 0.3);
         p.x = x; p.z = z;
         const yaw = Math.atan2(-P[4], P[3]);
         p.phase += dt * p.v * 5.2 * (p.pause > 0 ? 0 : 1);

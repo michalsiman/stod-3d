@@ -32,6 +32,7 @@ ROAD_TYPES = [
 # úseky bez aut (jen pěší a kola): (x, z středu úseku, důvod) → "nc": 1, doprava je vynechá
 NO_CARS = [
     (-170.0, -737.0, "Stod, ulička u kostela sv. Máří Magdalény – jen pro pěší a kola"),
+    (-229.5, -1232.0, "Stod, chodníček od kruhového objezdu k parkovišti u Stříbrské"),
 ]
 
 def terrain():
