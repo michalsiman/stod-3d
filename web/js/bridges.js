@@ -171,14 +171,15 @@ export function createBridges({ info, world }) {
           }
         }
       }
+      const spans = st?.spans || (st?.span ? [st.span] : []);       // pole s obloukem (podíl délky)
       // pilíře: delší mosty po ~16 m, opěry na koncích – jen kde je pod mostovkou místo
       const supports = [0, b.L];
       const np = b.L > 20 ? Math.floor(b.L / 16) : 0;
       for (let k = 1; k <= np; k++) {
         const s = b.L * k / (np + 1);
-        if (!st?.span || s < st.span[0] * b.L - 2 || s > st.span[1] * b.L + 2) supports.push(s);
+        if (!spans.some(([a, c]) => s > a * b.L - 2 && s < c * b.L + 2)) supports.push(s);
       }
-      if (st?.span) supports.push(st.span[0] * b.L, st.span[1] * b.L);   // pilíře pod patkami oblouku
+      for (const [a, c] of spans) supports.push(a * b.L, c * b.L);       // pilíře pod patkami oblouků
       supports.forEach((s, k) => {
         const c = [b.ax + b.ux * s, b.az + b.uz * s];
         const top = info.deckAtS(b, s) - thick;
@@ -188,12 +189,12 @@ export function createBridges({ info, world }) {
         const end = k < 2;
         post(c, u, n, end ? 1.8 : 1.1, 2 * hw + (end ? 0.6 : -0.4), g - 1.5, top, COL.deck);
       });
-      if (st?.type === 'arch') archBridge(b, st, hw, u, n);
+      if (st?.type === 'arch') for (const sp of spans) archBridge(b, st, sp, hw, u, n);
       if (st?.type === 'truss') trussBridge(b, st, hw, u, n);
     }
     // ocelové oblouky se závěsy po obou stranách vozovky (silniční most přes Radbuzu)
-    function archBridge(b, st, hw, u, n) {
-      const k = new THREE.Color(st.color), s0 = st.span[0] * b.L, s1 = st.span[1] * b.L, N = 28;
+    function archBridge(b, st, span, hw, u, n) {
+      const k = new THREE.Color(st.color), s0 = span[0] * b.L, s1 = span[1] * b.L, N = 28;
       const at = (s) => [b.ax + b.ux * s, b.az + b.uz * s];
       for (const sgn of [-1, 1]) {
         const v = sgn * (b.w / 2 + 0.35);

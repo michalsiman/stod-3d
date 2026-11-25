@@ -384,7 +384,7 @@ function spitalniKaple() {
 // Mosty podle fotografií: styl se přiřadí mostu, jehož střed leží do 30 m od `at`.
 export const BRIDGE_STYLES = [
   // silniční most I/26 přes Radbuzu: dva bílé ocelové oblouky se závěsy mezi vozovkou a chodníky
-  { at: [-187, -929], type: 'arch', color: 0xf4f4f2, rail: 0xdfe3e6, sidewalk: 3.0, span: [0.15, 0.55], rise: 6 },
+  { at: [-187, -929], type: 'arch', color: 0xf4f4f2, rail: 0xdfe3e6, sidewalk: 3.0, spans: [[0.12, 0.5], [0.5, 0.88]], rise: 6 },
   // lávka přes Radbuzu (Wikidata): zelená ocelová příhradová konstrukce s horním pásem do oblouku
   { at: [57.5, -999], type: 'truss', color: 0x3f8a6a, rail: 0x3f8a6a, extra: 0.9, rise: 1.4 },
 ];
