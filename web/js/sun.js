@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { NIGHT } from './night.js';
+import { SEASON } from './season.js';
 
 // Slunce podle skutečnosti: astronomická poloha pro Stod, barvy světla a oblohy podle výšky slunce,
 // režim „Aktuální čas“ (online) nebo vlastní datum a hodina.
@@ -171,6 +172,7 @@ export function createTimeControls({ onChange }) {
     const t = current();
     const pos = solarPosition(t.date);
     NIGHT.litFrac.value = litFraction(t.minutes);
+    SEASON.doy.value = t.doy;
     const d = new Date(Date.UTC(t.year, 0, t.doy));
     const hh = String(Math.floor(t.minutes / 60)), mm = String(t.minutes % 60).padStart(2, '0');
     label.textContent = `${d.getUTCDate()}. ${MONTHS[d.getUTCMonth()]}, ${hh}:${mm}`;

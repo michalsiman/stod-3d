@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { SEASON, SEASON_GLSL } from './season.js';
+import { COMMON } from './glsl.js';
 
 // Stylizované stromy: listnatý = mnohostěn (20 trojúhelníků), jehličnan = dva kužely.
 // Po blocích 256 × 256 m; zobrazují se s detailem dlaždice (do ~700 m), dál je les
@@ -62,6 +64,17 @@ export function createTrees({ buf, meta, world, exclude }) {
   const starts = meta.tree_chunks;
 
   const mat = new THREE.MeshLambertMaterial({ flatShading: true, vertexColors: true });
+  // listnáče: barvy a hustota koruny podle ročního období (holé v zimě)
+  const decMat = mat.clone();
+  decMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uDoy = SEASON.doy;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nuniform float uDoy;\nfloat leafAmt(){ return smoothstep(100., 128., uDoy) * (1. - smoothstep(292., 320., uDoy)); }`)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed *= mix(.72, 1., leafAmt());');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${COMMON}\n${SEASON_GLSL}`)
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = seasonLeaf(diffuseColor.rgb);');
+  };
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x7a5c44 });
   const decGeo = deciduousGeo(), conGeo = coniferGeo();
   const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1, 4, 1).translate(0, 0.5, 0);
@@ -94,7 +107,7 @@ export function createTrees({ buf, meta, world, exclude }) {
       }
     }
     const grp = new THREE.Group();
-    for (const [geo, list, material] of [[decGeo, dec, mat], [conGeo, con, mat], [trunkGeo, trunk, trunkMat]]) {
+    for (const [geo, list, material] of [[decGeo, dec, decMat], [conGeo, con, mat], [trunkGeo, trunk, trunkMat]]) {
       if (!list.length) continue;
       const im = new THREE.InstancedMesh(geo, material, list.length);
       list.forEach(([mm, cc], i) => { im.setMatrixAt(i, mm); if (cc) im.setColorAt(i, cc); });

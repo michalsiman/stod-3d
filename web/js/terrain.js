@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { patch } from './glsl.js';
+import { SEASON, SEASON_GLSL } from './season.js';
 
 
 // Zjednodušený, stylizovaný povrch: každá třída pokryvu jednou plochou barvou.
@@ -20,6 +21,7 @@ const PALETTE_GLSL = Object.entries(PALETTE)
 const FIELD_GLSL = FIELDS.map((st, i) => st.map((c, j) => `  if (st == ${i} && v == ${j}) return ${vec3(c)};`).join('\n')).join('\n');
 
 const SURFACE = /* glsl */ `
+${SEASON_GLSL}
 uniform sampler2D uLC;
 uniform vec4 uRect;          // x0, z0, velikost dlaždice [m], velikost textury [px]
 varying vec3 vWPos;
@@ -63,21 +65,47 @@ vec3 landColor(vec2 p){
   vec4 t = tx[best];
   int cls = int(t.r * 255. + .5);
   if (cls == 2) {
-    int g = int(t.g * 255. + .5);
-    return fieldColor(min(g / 64, 2), (g % 64) % 3);
+    int g = int(t.g * 255. + .5), v = (g % 64) % 3;
+    return seasonField(min(g / 64, 2), fieldColor(0, v), fieldColor(1, v), fieldColor(2, v));
   }
-  return classColor(cls);
+  vec3 col = classColor(cls);
+  // louky, trávníky, zahrady, křoviny, hřbitovy: svěžest podle ročního období
+  if (cls == 1 || cls == 3 || cls == 4 || cls == 8 || cls == 19) return seasonGrass(col);
+  // listnatý les: podzimní barvy a holé koruny; smíšený napůl; jehličnatý v zimě jen mírně tmavší
+  if (cls == 5) return seasonLeaf(col);
+  if (cls == 7) return mix(col, seasonLeaf(col), .5);
+  if (cls == 6) return mix(col * .9, col, grassLush());
+  return col;
 }
 `;
 
 export function createTerrainMaterials({ farTex, meta }) {
   const far = new THREE.MeshLambertMaterial({ map: farTex, flatShading: true });
+  // pohled zdálky: zelené plochy v textuře podle ročního období šednou / hnědnou
+  far.onBeforeCompile = (shader) => {
+    shader.uniforms.uDoy = SEASON.doy;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n#define hexc(r, g, b) pow(vec3(r, g, b) / 255., vec3(2.2))\n${SEASON_GLSL}`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        { vec3 c = diffuseColor.rgb; float gn = c.g - max(c.r, c.b);
+          float lush = grassLush(), w = smoothstep(.0, .03, gn);
+          c = mix(c, dullGrass(c), (1. - lush) * w * .9);
+          // zralá / žlutá pole na podzim a v zimě zorat (hnědá), na jaře zezelenat
+          float yel = smoothstep(.02, .08, c.r - c.b) * smoothstep(-.01, .02, c.g - c.b) * (1. - w);
+          float plow = clamp(smoothstep(245., 280., uDoy) + 1. - smoothstep(70., 110., uDoy), 0., 1.);
+          float sprout = smoothstep(95., 135., uDoy) * (1. - smoothstep(175., 200., uDoy));
+          float l = dot(c, vec3(.3, .55, .15));
+          c = mix(c, hexc(158, 120, 88) * (.6 + l * 1.6), yel * plow * .85);
+          c = mix(c, hexc(118, 156, 76) * (.6 + l * 1.4), yel * sprout * .7);
+          diffuseColor.rgb = c; }`);
+  };
 
   /** Materiál pro jednu dlaždici zblízka (vlastní mapa pokryvu). */
   function near(lcTex, x0, z0) {
     const uniforms = {
       uLC: { value: lcTex },
       uRect: { value: new THREE.Vector4(x0, z0, meta.tile, lcTex.image.width) },
+      uDoy: SEASON.doy,
     };
     const mat = new THREE.MeshLambertMaterial({ flatShading: true });
     mat.onBeforeCompile = (shader) => {
