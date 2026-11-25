@@ -8,6 +8,8 @@ import { createRoads } from './js/roads.js';
 import { createSidewalks } from './js/sidewalks.js';
 import { createSports } from './js/sports.js';
 import { createNightGlow } from './js/nightglow.js';
+import { createRain } from './js/rain.js';
+import { NIGHT } from './js/night.js';
 import { prepareBridges, createBridges } from './js/bridges.js';
 import { createFences } from './js/fences.js';
 import { createPower } from './js/power.js';
@@ -82,12 +84,15 @@ const hemi = new THREE.HemisphereLight(0xe8f2ff, 0xc2c8a8, 2.1);
 scene.add(hemi);
 let sunPos = { el: 40, az: 205 };
 let signLayer = null;
+const rain = createRain(scene);
 
 // stíny – přepínač (pamatuje si volbu); na mobilu ve výchozím stavu vypnuté
 let shadows = !isCoarse;
 try { const v = localStorage.getItem('stod3d.shadows'); if (v !== null) shadows = v === '1'; } catch { /* ignorovat */ }
 function applyLight() {
   applySun(sunPos, { sun, hemi, sky, fog: scene.fog, renderer, shadowsWanted: shadows });
+  rain.weather({ sun, hemi, sky, fog: scene.fog });
+  renderer.shadowMap.enabled = sun.castShadow;
   updateLamps();
   signLayer?.update();
   scene.traverse((o) => { if (o.material && !o.material.isShaderMaterial) o.material.needsUpdate = true; });
@@ -188,6 +193,15 @@ world.builders.push(() => traffic.refreshParked());
   bind('live-traffic', 'traffic', (v) => { traffic.setEnabled(v); drive.setBots(!v); });
   bind('live-people', 'people', (v) => life.setPeople(v));
   bind('live-animals', 'animals', (v) => life.setAnimals(v));
+  // déšť: ve výchozím stavu vypnutý; zvuk až po kliknutí (pravidla prohlížečů)
+  const rc = document.getElementById('rain');
+  rc.checked = opt('rain', false);
+  rain.set(rc.checked, false);
+  rc.addEventListener('change', () => {
+    try { localStorage.setItem('stod3d.rain', rc.checked ? '1' : '0'); } catch { /* ignorovat */ }
+    rain.set(rc.checked);
+    applyLight();
+  });
 }
 window.stod3d = { drive, world, camera, orbit, signs: signLayer, placeSigns, traffic, life };      // pro ladění v konzoli
 
@@ -459,6 +473,13 @@ renderer.setAnimationLoop(() => {
   else if (mode === 'drive') { drive.update(dt, keys); dirty = true; }
   else if (mode === 'orbit') { if (keys.size) panByKeys(dt); if (orbit.update()) dirty = true; } else if (keys.size || dirty) updateFree(dt);
 
+  // mlha jen na obzoru: s výškou kamery se odsouvá (z výšky není město zamlžené); v dešti blíž
+  {
+    const camH = Math.max(0, camera.position.y - world.heightAt(camera.position.x, camera.position.z));
+    scene.fog.near = (rain.on ? 600 : 3000) + camH * 4;
+    scene.fog.far = (rain.on ? 6000 : 14000) + camH * 9;
+    if (rain.on) { rain.update(clock.elapsedTime, camera, NIGHT.night.value); dirty = true; }
+  }
   // doprava a život: jen když je kamera dost nízko, aby šlo něco vidět (jinak se nekreslí pořád dokola)
   if (traffic.enabled || life.active) {
     const lf = mode === 'orbit' ? orbit.target : camera.position;
