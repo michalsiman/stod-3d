@@ -15,7 +15,7 @@ const VTOWN = 14;                                            // silnice v obci (
 const ROAD_TYPES = new Set([0, 1, 2, 3, 4, 5, 6]);
 
 // ---------------------------------------------------------------- graf sítě
-export function buildGraph(roads, types) {
+export function buildGraph(roads, types, cars = false) {
   const ids = new Map(), X = [], Z = [], adj = [];
   const node = (p) => {
     const k = `${Math.round(p[0])},${Math.round(p[1])}`;
@@ -24,7 +24,7 @@ export function buildGraph(roads, types) {
     return i;
   };
   for (const r of roads) {
-    if (!types.has(r.t)) continue;
+    if (!types.has(r.t) || (cars && r.nc)) continue;      // nc = jen pro pěší a kola
     let a = node(r.p[0]);
     for (let i = 1; i < r.p.length; i++) {
       const b = node(r.p[i]);
@@ -180,9 +180,10 @@ const laneOffset = (t) => Math.min(WIDTH[t] / 4, 1.9);
 // ---------------------------------------------------------------- vykreslení: instance po druzích
 function createPools(scene, caps) {
   const mats = {
-    paint: new THREE.MeshLambertMaterial({ vertexColors: true }),
-    fixed: new THREE.MeshLambertMaterial({ vertexColors: true }),
-    lamp: new THREE.MeshBasicMaterial({ vertexColors: true }),
+    // stejný posun hloubky jako silnice (roads.js), jinak silnice zakrývá spodek kol
+    paint: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }),
+    fixed: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }),
+    lamp: new THREE.MeshBasicMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }),
   };
   const pools = {};
   const zero = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -302,7 +303,7 @@ function shelterGeo(rail) {
 export function createTraffic({ roads, bridges, buildings, world, scene, stops, parking, coarse, drive }) {
   const group = new THREE.Group();
   scene.add(group);
-  const G = buildGraph(roads, ROAD_TYPES);
+  const G = buildGraph(roads, ROAD_TYPES, true);
   const R = buildGraph(roads, new Set([8]));
   const W2 = world.W / 2 - 25, H2 = world.H / 2 - 25;
   const inside = (x, z) => Math.abs(x) < W2 && Math.abs(z) < H2;

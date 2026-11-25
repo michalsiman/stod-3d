@@ -381,6 +381,37 @@ function spitalniKaple() {
   return { at: [-146.9, -815.7], radius: 5, geo: K.done() };
 }
 
+/** Silo u nádraží ve Stodě (za kolejemi): dvě řady betonových válců, mezi nimi prosklená schodišťová
+ *  věž, nahoře strojovna s římsou a nástavbami, na střeše stožáry s anténami (podle fotografií). */
+function siloStod() {
+  const K = kit([-872.2, -1338.8], [0.665, -0.747]), { place, box } = K;
+  const C = { conc: 0xcbc5b6, dark: 0xb3ad9f, glass: 0x4d5a63, head: 0xbdb7a8, steel: 0x8e9398, white: 0xe6e6e2 };
+  const H = 26, R = 3.05;
+  for (const b of [-3.3, 3.3]) {
+    for (const a of [-12, -6, 0, 6, 12]) {
+      place(new THREE.CylinderGeometry(R, R, H, 20), a, b, H / 2, (a + b) % 12 === 0 ? C.conc : C.dark);
+      place(new THREE.CylinderGeometry(R + 0.15, R + 0.15, 0.5, 20), a, b, H - 0.25, C.dark);
+    }
+  }
+  // schodišťová věž s prosklenými pásy
+  box(1.4, 4.6, -6.6, 6.6, 0, H + 3.5, C.head);
+  box(1.9, 4.1, -6.7, 6.7, 2, H + 2.5, C.glass);
+  // strojovna nahoře (s římsou), další dvě nástavby
+  box(-15.6, 15.6, -6.8, 6.8, H - 0.2, H + 0.5, C.dark);
+  box(-15.2, 15.2, -6.4, 6.4, H + 0.5, H + 3.6, C.head);
+  box(-15.2, 15.2, -6.45, 6.45, H + 1.6, H + 2.6, C.glass);
+  box(-6, 8, -3.8, 3.8, H + 3.6, H + 6.4, C.head);
+  box(-6, 8, -3.85, 3.85, H + 4.4, H + 5.4, C.glass);
+  box(-1.5, 3.5, -2.2, 2.2, H + 6.4, H + 8.2, C.white);
+  // stožáry s anténami
+  for (const [a, b, h] of [[-4, -2.5, 10], [0.5, 1.5, 13], [5, -2, 9], [-10, 3, 6], [12, -4, 5]]) {
+    const y0 = a > -6 && a < 8 && Math.abs(b) < 3.8 ? H + 6.4 : H + 3.6;
+    place(new THREE.CylinderGeometry(0.12, 0.16, h, 6), a, b, y0 + h / 2, C.steel);
+    for (const k of [0.6, 0.85]) box(a - 0.35, a + 0.35, b - 0.12, b + 0.12, y0 + h * k - 0.7, y0 + h * k + 0.7, C.white);
+  }
+  return { at: [-872.2, -1338.8], radius: 8, geo: K.done() };
+}
+
 // Mosty podle fotografií: styl se přiřadí mostu, jehož střed leží do 30 m od `at`.
 export const BRIDGE_STYLES = [
   // silniční most I/26 přes Radbuzu: dva bílé ocelové oblouky se závěsy mezi vozovkou a chodníky
@@ -391,9 +422,11 @@ export const BRIDGE_STYLES = [
 // Mosty, které ZABAGED nemá (osa po pěšině přes vodu)
 export const EXTRA_BRIDGES = [
   [[67.2, -989.0], [60.1, -999.1], [53.2, -1007.7], [48.0, -1014.0]],
+  // lávka pro pěší přes mlýnský náhon (ZABAGED ji nemá jako most)
+  [[60.5, -917.8], [64, -920], [67, -922], [69, -924], [73.5, -927]],
 ];
 
-const LANDMARKS = [krizovyVrch, kostelStod, spitalniKaple];
+const LANDMARKS = [krizovyVrch, kostelStod, spitalniKaple, siloStod];
 
 /**
  * Barvy a výšky vybraných budov podle veřejně dostupných fotografií (Wikimedia Commons – jen předloha).

@@ -440,7 +440,53 @@ def build_landcover():
     poly(132, LC["WATER"])
     toky = zbg(93)
     cv.line(paths_of([f for f in toky if f["attributes"].get("vydattok_p") == "stálý"]), LC["WATER"], 2)
+    green_from_ortho(cv)
     return cv
+
+
+TREE_HINT = None     # koruny stromů z ortofota tam, kde je DMP nevidí (bool, H × W)
+
+
+def green_from_ortho(cv):
+    """Areály a zástavba (šedé plochy) jsou z velké části tráva a stromy – podle ortofota: souvisle zelené
+    plochy → trávník; tmavé členité zelené plochy (koruny) si zapamatovat pro stromy (build_trees)."""
+    global TREE_HINT
+    if ORTHO is None:
+        return
+    TREE_HINT = np.zeros((H, W), bool)
+    n_lawn = 0
+    M = 6
+    for j in range(NY):
+        for i in range(NX):
+            r0, c0 = max(j * TILE - M, 0), max(i * TILE - M, 0)
+            r1, c1 = min((j + 1) * TILE + M, H), min((i + 1) * TILE + M, W)
+            px = ORTHO[r0:r1, c0:c1].astype(np.int16)
+            R, G, Bc = px[..., 0], px[..., 1], px[..., 2]
+            gi = ndimage.median_filter(2 * G - R - Bc, 5)
+            lum = (R + G + Bc) / 3
+            green = gi > 14
+            # tráva: všechno, co není šedý zpevněný povrch (asfalt, beton, dlažba – nízká sytost)
+            # nebo holá zem; zahrnuje i trávu ve stínu stromů
+            sat = np.max(px, axis=-1) - np.min(px, axis=-1)
+            soil = (R > G + 8) & (R > Bc + 18)
+            lawn = ndimage.binary_closing(ndimage.median_filter((gi > 4) & ~soil & (sat > 14), 7), iterations=2)
+            # koruny: zelené, tmavší a členité (rozptyl jasu)
+            lf = lum.astype(np.float32)
+            var = ndimage.uniform_filter(lf * lf, 5) - ndimage.uniform_filter(lf, 5) ** 2
+            crown = ndimage.binary_opening(green & (lum < 105) & (var > 90), iterations=2)
+            lab, nlab = ndimage.label(crown)
+            if nlab:
+                sizes = ndimage.sum(crown, lab, np.arange(1, nlab + 1))
+                crown = np.isin(lab, np.nonzero(sizes >= 30)[0] + 1)
+            sr = slice(j * TILE - r0, j * TILE - r0 + TILE)
+            sc = slice(i * TILE - c0, i * TILE - c0 + TILE)
+            cls = cv.R[j * TILE:(j + 1) * TILE, i * TILE:(i + 1) * TILE]
+            grey = np.isin(cls, [LC["YARD"], LC["SETTLEMENT"]])
+            m = grey & lawn[sr, sc]
+            cls[m] = LC["LAWN"]
+            n_lawn += int(m.sum())
+            TREE_HINT[j * TILE:(j + 1) * TILE, i * TILE:(i + 1) * TILE] = crown[sr, sc] & ~np.isin(cls, list(FOREST) + [LC["WATER"]])
+    log(f"  ortofoto: {n_lawn / 1e4:.0f} ha šedých ploch → trávník, {TREE_HINT.sum() / 1e4:.0f} ha korun stromů")
 
 
 # ---------------------------------------------------------------- vektory
@@ -810,6 +856,21 @@ def build_trees(cv, ndsm, nomask):
             hs = np.concatenate([hs, h3[gy, gx]])
             r = np.concatenate([r, sp * 0.68 * rng.uniform(0.85, 1.15, gy.size)])
             fl = np.concatenate([fl, np.ones(gy.size, bool)])
+            # koruny z ortofota, kde DMP strom nevidí (např. park u nemocnice): středy korun po ~6 m
+            if TREE_HINT is not None:
+                hint = TREE_HINT[r0:r0 + TILE, c0:c0 + TILE] & (nd < 2) & ~forest & ~bad & ~near_b
+                if hint.any():
+                    dist = ndimage.distance_transform_edt(hint)
+                    pk = (dist >= ndimage.maximum_filter(dist, 7)) & (dist >= 1.5)
+                    oy, ox = np.nonzero(pk)
+                    keep = rng.random(oy.size) < 0.8
+                    oy, ox = oy[keep], ox[keep]
+                    oh = rng.uniform(8, 15, oy.size)
+                    ys = np.concatenate([ys, oy])
+                    xs = np.concatenate([xs, ox])
+                    hs = np.concatenate([hs, oh])
+                    r = np.concatenate([r, np.clip(dist[oy, ox] * 1.1 + 1.0, 2.2, 5.0)])
+                    fl = np.concatenate([fl, np.zeros(oy.size, bool)])
             c = cls[ys, xs]
             pc = np.where(c == LC["FOREST_CONIF"], 0.9, np.where(c == LC["FOREST_MIXED"], 0.45, 0.04))
             con = rng.random(hs.size) < pc
@@ -906,6 +967,10 @@ def main():
         built=time.strftime("%Y-%m-%d"),
     )
     (OUT / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")))
+    # opravy po sestavení: budovy ve svahu, typy komunikací podle skutečnosti
+    import fix_data
+    fix_data.fit_buildings(fix_data.terrain())
+    fix_data.fix_roads()
     log(f"hotovo za {time.time() - t0:.0f} s →", OUT)
 
 

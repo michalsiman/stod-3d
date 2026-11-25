@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildGraph, Track } from './traffic.js';
 import { personParts, deerParts, hareParts, birdParts, cyclistParts } from './models.js';
+import { SIDEWALK_TOP } from './sidewalks.js';
 
 // Život v okolí kamery: lidé chodí po chodnících a pěšinách v obcích a čekají na zastávkách,
 // srnky se pasou na okrajích lesa (a utečou, když se přiblížíte), zajíci skáčou po polích,
@@ -15,7 +16,9 @@ const SHIRTS = [0x2f4e7a, 0xb13a32, 0xe2dccb, 0x3d6b45, 0x262a30, 0x8b5e9c, 0xd9
 const PANTS = [0x2a3446, 0x30302f, 0x4b4f55, 0x5c4a3a, 0x1f2a44, 0x7a6a55].map(C);
 
 function pool(scene, geo, cap, { color = false, shadow = true, both = false } = {}) {
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: both ? THREE.DoubleSide : THREE.FrontSide });
+  // stejný posun hloubky jako silnice (roads.js), jinak silnice zakrývá spodek kol / chodidla
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: both ? THREE.DoubleSide : THREE.FrontSide,
+    polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 });
   const im = new THREE.InstancedMesh(geo, mat, cap);
   im.frustumCulled = false;
   im.castShadow = shadow;
@@ -26,7 +29,7 @@ function pool(scene, geo, cap, { color = false, shadow = true, both = false } = 
   return { im, zero, hideFrom(n) { for (let i = n; i < cap; i++) im.setMatrixAt(i, zero); } };
 }
 
-export function createLife({ roads, bridges, buildings, world, scene, meta, treesBuf, stops, bike, coarse }) {
+export function createLife({ roads, bridges, buildings, world, scene, meta, treesBuf, stops, bike, sidewalks, coarse }) {
   const group = new THREE.Group();
   scene.add(group);
   const heightAt = (x, z) => world.heightAt(x, z);
@@ -124,7 +127,8 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       if (!detailAt(walkG.X[a], walkG.Z[a])) continue;
       if (camPos && Math.hypot(walkG.X[a] - camPos.x, walkG.Z[a] - camPos.z) < minCam) continue;
       const side = Math.random() < 0.5 ? 1 : -1;
-      const off = (t) => (t === 7 ? 0.25 : WIDTH[t] / 2 + 0.8) * side;
+      // po chodníku (střed 1,1 m za okrajem vozovky), na cestách bez chodníku při kraji
+      const off = (t) => (t === 7 ? 0.25 : t <= 2 ? WIDTH[t] / 2 + 1.1 : WIDTH[t] / 2 - 0.45) * side;
       const tr = new Track();
       tr.push(walkG.X[a], walkG.Z[a], off(e.t), e.t);
       tr.push(walkG.X[e.to], walkG.Z[e.to], off(e.t), e.t);
@@ -385,7 +389,8 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
         if (!extendWalker(p)) { p.dead = true; continue; }
         p.tr.at(p.s, P);
         const x = P[0], z = P[1];
-        const y = (bridges.at(x, z, 2, P[3], P[4]) ?? heightAt(x, z)) + 0.06;
+        const br = bridges.at(x, z, 2, P[3], P[4]);
+        const y = br !== null ? br + 0.5 : heightAt(x, z) + (P[2] <= 2 && sidewalks?.at(x, z) ? SIDEWALK_TOP : P[2] <= 6 && P[2] !== 7 ? 0.36 : 0.3);
         p.x = x; p.z = z;
         const yaw = Math.atan2(-P[4], P[3]);
         p.phase += dt * p.v * 5.2 * (p.pause > 0 ? 0 : 1);

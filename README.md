@@ -127,6 +127,18 @@ Přepínače v panelu (Zobrazení → Doprava / Lidé / Zvířata a ptáci, volb
 
 Modely jsou v `web/js/models.js` (sloučené kvádry s barvami vrcholů, vykreslené jako instance).
 
+## Opravy dat a doplňky
+
+* `tools/fix_data.py` (spouští se i na konci `build_data.py`): budovy ve svahu se posadí na vykreslovaný terén
+  a okap se zvedne nad nejvyšší místo pod domem (původní hodnoty v `h0`); typy komunikací podle skutečnosti
+  (`ROAD_TYPES` – lávky, cesty v zahradě nemocnice) a úseky bez aut (`NO_CARS` → `"nc": 1`).
+* Ortofoto: šedé plochy areálů a zástavby, které nejsou zpevněné, jsou trávník; koruny stromů, které DMP
+  nevidí, se doplní jako stromy.
+* Chodníky (`web/js/sidewalks.js`) podél silnic a ulic v obcích; chodci chodí po nich.
+* Sportoviště z OSM (`sport.json`, `web/js/sports.js`): hřiště podle povrchu s čarami, antukové kurty, heliport;
+  ovál dráhy na stadionu v Luční (`TRACK_AROUND`).
+* Oplocení nemocnice (`EXTRA_FENCES`), silo u nádraží (`siloStod`) v `landmarks.js`.
+
 ## Přegenerování dat
 
 ```bash

@@ -40,6 +40,31 @@ rel[route=bicycle]{bb}->.r;.r out tags;way(r.r){bb};out tags geom;""")
     return ways + routes
 
 
+def sports():
+    """Hřiště, dráhy, dětská hřiště a heliport → web/data/sport.json."""
+    bb = f"({P.S},{P.Wl},{P.N},{P.E})"
+    els = overpass("stod/osm_sport.json", f"""[out:json][timeout:60];
+(way[leisure~"^(pitch|track|playground|sports_centre|stadium)$"]{bb};way[aeroway=helipad]{bb};node[aeroway=helipad]{bb};);
+out tags geom;""")
+    out = []
+    for e in els:
+        t = e.get("tags", {})
+        if e["type"] == "node":
+            x, z = P.local(e["lon"], e["lat"])
+            if P.inside(x, z):
+                out.append(dict(k="helipad", p=[[round(x, 1), round(z, 1)]]))
+            continue
+        g = geom(e.get("geometry", []))
+        if not g or len(g) < 3:
+            continue
+        k = t.get("aeroway") or t.get("leisure")
+        if k in ("sports_centre", "stadium"):
+            continue
+        out.append(dict(k=k, sport=t.get("sport", ""), surface=t.get("surface", ""), closed=int(math.dist(g[0], g[-1]) < 1), p=g))
+    (B.OUT / "sport.json").write_text(json.dumps(out, separators=(",", ":")))
+    print(f"{len(out)} sportovišť a heliportů")
+
+
 def geom(g):
     pts = [[round(v, 1) for v in P.local(p["lon"], p["lat"])] for p in g if p]
     return pts if any(P.inside(*p) for p in pts) else None
@@ -86,3 +111,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    sports()
