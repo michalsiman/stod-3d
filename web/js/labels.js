@@ -32,7 +32,7 @@ export function createLabels({ data, world, scene, camera, container, onChange, 
   container.appendChild(renderer.domElement);
 
   const state = {
-    places: load('places', true),
+    places: load('places', false),
     streets: load('streets', false),
     pois: load('pois', false),
     cats: load('cats', Object.fromEntries(Object.keys(data.categories).map((k) => [k, true]))),

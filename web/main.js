@@ -421,7 +421,15 @@ orbit.addEventListener('change', () => {
     history.replaceState(null, '', `#${[p.x, p.y, p.z, t.x, t.y, t.z].map((n) => n.toFixed(1)).join(',')}`);
   }, 400);
 });
-if (!readHash()) flyTo('Stod', true);
+// výchozí pohled: Stod s Radbuzou (kostel, most, meandr řeky)
+const DEFAULT_VIEW = [-460, 190, -660, -200, 0, -990];
+if (!readHash()) {
+  const [cx, cy, cz, tx, , tz] = DEFAULT_VIEW;
+  const g = world.heightAt(tx, tz);
+  camera.position.set(cx, g + cy, cz);
+  orbit.target.set(tx, g, tz);
+  orbit.update();
+}
 
 // ------------------------------------------------------------------ smyčka – kreslí se jen při změně
 const clock = new THREE.Clock();
