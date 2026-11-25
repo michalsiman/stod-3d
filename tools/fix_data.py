@@ -33,6 +33,8 @@ ROAD_TYPES = [
 NO_CARS = [
     (-170.0, -737.0, "Stod, ulička u kostela sv. Máří Magdalény – jen pro pěší a kola"),
     (-229.5, -1232.0, "Stod, chodníček od kruhového objezdu k parkovišti u Stříbrské"),
+    (167.0, -1655.0, "Stod, Háj umučených – příjezd, zákaz vjezdu (pietní místo)"),
+    (207.0, -1700.0, "Stod, Háj umučených – cesta hájem, zákaz vjezdu (pietní místo)"),
 ]
 
 def terrain():
