@@ -899,7 +899,16 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
 
   const fwd = new THREE.Vector3(), tmpV = new THREE.Vector3();
   function placeCamera(instant, dt = 0.016) {
-    const cx = Math.cos(st.heading), cz = Math.sin(st.heading);
+    // kamera se za autem stáčí se zpožděním: v zatáčce je auto vidět trochu z boku (z kabiny bez zpoždění)
+    if (instant || st.camYaw === undefined || st.view === 2) st.camYaw = st.heading;
+    else {
+      const d = Math.atan2(Math.sin(st.heading - st.camYaw), Math.cos(st.heading - st.camYaw));
+      st.camYaw += THREE.MathUtils.clamp(d * Math.min(1, dt * 2.2), -Math.abs(d), Math.abs(d));
+      const maxLag = 0.55;                                   // nejvýš ~30° z boku
+      const lag = Math.atan2(Math.sin(st.heading - st.camYaw), Math.cos(st.heading - st.camYaw));
+      if (Math.abs(lag) > maxLag) st.camYaw = st.heading - Math.sign(lag) * maxLag;
+    }
+    const cx = Math.cos(st.camYaw), cz = Math.sin(st.camYaw);
     const cm = model.spec.cam;
     const [back, up, ahead] = st.view === 0 ? [8.2 * cm, 3.4 * cm, 5] : st.view === 1 ? [17 * cm, 9 * cm, 6]
       : [{ truck: -2.6, tractor: 0.65 }[carType] ?? -0.2, { truck: 2.55, tractor: 2.25, offroad: 1.75 }[carType] ?? 1.32, 20];
@@ -1064,7 +1073,9 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     car.rotation.order = 'YZX';
     car.rotation.set(st.roll, -st.heading, st.pitch);
     // lehké naklonění karoserie v zatáčce a při brzdění
-    model.body.rotation.x = THREE.MathUtils.clamp(-yawRate * v * 0.006, -0.06, 0.06);
+    // náklon karoserie do strany v zatáčce (výraznější, plynulý)
+    const lean = THREE.MathUtils.clamp(-yawRate * v * 0.011, -0.1, 0.1);
+    model.body.rotation.x += (lean - model.body.rotation.x) * Math.min(1, dt * 6);
     model.body.rotation.z = THREE.MathUtils.clamp((brake && v > 1 ? -0.025 : 0) + (gas ? 0.012 : 0), -0.04, 0.03);
     for (const w of model.wheels) {
       w.spin.rotation.z -= (v * dt) / (w.r || 0.35);
