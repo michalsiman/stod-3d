@@ -443,6 +443,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     <div class="dh-speed"><b>0</b><span>km/h</span></div>
     <div class="dh-where"><div class="dh-street">–</div><div class="dh-surface"></div></div>
     <div class="dh-tools">
+      <button data-act="home" title="Zpět na náměstí ČSA ve Stodě (N)">🅿️</button>
       <button data-act="goal" title="Cíl jízdy – náhodná zajímavost v okolí (T)">🎯</button>
       <button data-act="view" title="Pohled (C)">🎥</button>
       <button data-act="type" title="Typ auta – osobní, závoďák, teréňák, náklaďák, traktor (K)">🚙</button>
@@ -548,6 +549,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   hud.querySelector('[data-act=goal]').onclick = () => newGoal();
   hud.querySelector('[data-act=paint]').onclick = () => repaint();
   hud.querySelector('[data-act=type]').onclick = () => changeType();
+  hud.querySelector('[data-act=home]').onclick = () => goHome();
   hud.querySelector('[data-act=sound]').onclick = () => toggleSound();
   hud.querySelector('[data-act=exit]').onclick = () => onExit?.();
   const soundBtn = hud.querySelector('[data-act=sound]');
@@ -560,6 +562,15 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     try { localStorage.setItem('stod3d.paint', String(paintIdx)); } catch { /* ignorovat */ }
   }
   // typ auta: postaví nový model (barva zůstane), promáčkliny se tím opraví
+  // zpátky na parkoviště na náměstí ČSA (kdo se ztratí nebo zajede daleko): ulička mezi stáními, čelem k severu
+  function goHome() {
+    const a = [-258.1, -1079.6], b = [-271.7, -1120.0];
+    const t = 0.45, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+    Object.assign(st, { x, z, heading: Math.atan2(a[1] - b[1], a[0] - b[0]), v: 0, steer: 0, spinV: 0, stuck: 0, ghost: 1 });
+    st.y = surfaceAt(x, z).y;
+    placeCamera(true);
+    flash('Náměstí ČSA, Stod');
+  }
   function changeType() {
     carType = CAR_TYPES[(CAR_TYPES.indexOf(carType) + 1) % CAR_TYPES.length];
     try { localStorage.setItem('stod3d.carType', carType); } catch { /* ignorovat */ }
@@ -932,6 +943,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     if (e.code === 'KeyT') newGoal();
     if (e.code === 'KeyP') repaint();
     if (e.code === 'KeyK') changeType();
+    if (e.code === 'KeyN') goHome();
     if (e.code === 'KeyM') toggleSound();
     if (e.code === 'KeyG') setGta(!gta);
     if (e.code === 'Space') e.preventDefault();
