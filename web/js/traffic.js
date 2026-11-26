@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { NIGHT } from './night.js';
 import { VEHICLES, box, cyl, merge } from './models.js';
 import { ROUNDABOUTS } from './landmarks.js';
+import { taxiExtras } from './taxis.js';
 
 // Doprava: auta, dodávky, náklaďáky, kamiony a traktory jezdí po silniční síti v okolí kamery
 // (vpravo, zpomalují v zatáčkách a v obcích, drží odstup, dávají přednost), autobusy jezdí po linkách
@@ -364,7 +365,7 @@ function shelterGeo(rail) {
 }
 
 // ---------------------------------------------------------------- hlavní objekt
-export function createTraffic({ roads, bridges, buildings, world, scene, stops, parking, coarse, drive }) {
+export function createTraffic({ roads, bridges, buildings, world, scene, stops, parking, coarse, drive, taxis, taxiPlaces, onTaxiStop }) {
   const group = new THREE.Group();
   scene.add(group);
   const G = buildGraph(roads, ROAD_TYPES, true);
@@ -410,8 +411,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
 
   // ---------------------------------------------------------- vozidla
   const caps = coarse
-    ? { car: 32, hatch: 14, suv: 12, combi: 12, van: 8, truck: 6, semi: 6, trailer: 6, tractor: 3, wagon: 3, bus: 10, unit: 4, loco: 2, coach: 10 }
-    : { car: 70, hatch: 30, suv: 24, combi: 24, van: 18, truck: 12, semi: 12, trailer: 12, tractor: 6, wagon: 6, bus: 10, unit: 4, loco: 2, coach: 10 };
+    ? { mpv: 3, car: 32, hatch: 14, suv: 12, combi: 12, van: 8, truck: 6, semi: 6, trailer: 6, tractor: 3, wagon: 3, bus: 10, unit: 4, loco: 2, coach: 10 }
+    : { mpv: 3, car: 70, hatch: 30, suv: 24, combi: 24, van: 18, truck: 12, semi: 12, trailer: 12, tractor: 6, wagon: 6, bus: 10, unit: 4, loco: 2, coach: 10 };
   const pool = createPools(group, caps);
   const vehicles = [];          // auta v okolí + autobusy
   const RADIUS = coarse ? 550 : 750;
@@ -524,6 +525,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
   function removeVehicle(v) {
     v.gone = true;
     if (v.em) group.remove(v.em.bar);
+    if (v.over) group.remove(v.over);
+    if (v.taxi) { v.taxi.out = false; if (v.taxi.car) v.taxi.car.visible = true; }
     pool.release(v.kind, v.slot);
     if (v.trailer) pool.release(v.trailer.kind, v.trailer.slot);
     vehicles.splice(vehicles.indexOf(v), 1);
@@ -613,7 +616,10 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     if (v.stops && v.next < v.stops.length) {
       const d = v.stops[v.next].s - v.s;
       if (d < 0.6) {
-        if (v.stopT <= 0 && v.v < 0.4) v.stopT = 14 + Math.random() * 10;
+        if (v.stopT <= 0 && v.v < 0.4) {
+          v.stopT = v.taxi ? (v.next === 0 ? 7 + Math.random() * 5 : 0.5) : 14 + Math.random() * 10;
+          if (v.taxi && v.next === 0) onTaxiStop?.(v.x - v.dz * 1.6, v.z + v.dx * 1.6, -v.dz, v.dx);   // vystoupí cestující
+        }
         want = 0;
         if (v.stopT > 0) {
           v.stopT -= dt;
@@ -666,6 +672,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       pool.set(v.kind, v.slot, show ? m : pool.zero);
       if (v.trailer && w.tm) pool.set(v.trailer.kind, v.trailer.slot, show ? w.tm : pool.zero);
       if (v.em) { v.em.bar.matrix.copy(m); v.em.bar.matrixWorldNeedsUpdate = true; v.em.bar.visible = show; }
+      if (v.over) { v.over.matrix.copy(m); v.over.matrixWorldNeedsUpdate = true; v.over.visible = show; }
       return;
     }
     pose(tr, v.s, v.s - v.m.wb, mat);
@@ -675,6 +682,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     const show = detailAt(v.x, v.z);
     pool.set(v.kind, v.slot, show ? mat : pool.zero);
     if (v.em) { v.em.bar.matrix.copy(mat); v.em.bar.matrixWorldNeedsUpdate = true; v.em.bar.visible = show; }
+    if (v.over) { v.over.matrix.copy(mat); v.over.matrixWorldNeedsUpdate = true; v.over.visible = show; }
     if (v.trailer) {
       const t = v.trailer;
       const hitch = v.s - v.m.wb - (v.kind === 'semi' ? -0.25 : 1.6);
@@ -868,6 +876,60 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
   }
   /** Houkající vozidla pro zvuk sirén. */
   const emergencyList = () => vehicles.filter((v) => v.em && !v.wreck);
+
+  // ---------------------------------------------------------- taxíky z konce Sokolské
+  // pořád 1–2 taxíky na cestě: z náhodného stání vyjedou, dojedou na náhodné místo ve Stodě, Lelově nebo Hradci,
+  // zastaví, vystoupí cestující, otočí se a vrátí se zpátky na své stání; za chvíli vyrazí další
+  const taxiCost = (e) => e.L * [1, 1, 1.15, 2.5, 40, 80, 200, 5000][e.t];
+  const streetNode = (x, z) => G.nearest(x, z, (i) => G.adj[i].some((e) => e.t <= 3), 3);
+  let taxiT = 1.5, taxiWant = 1;
+  function taxiTrip(bay) {
+    const home = streetNode(bay.ex, bay.ez);
+    if (home < 0) return null;
+    const [, px, pz, R] = taxiPlaces[Math.floor(Math.random() * taxiPlaces.length)];
+    let dest = -1;
+    for (let k = 0; k < 30 && dest < 0; k++) {
+      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * R;
+      const n = streetNode(px + Math.cos(a) * d, pz + Math.sin(a) * d);
+      if (n >= 0 && n !== home && Math.hypot(G.X[n] - G.X[home], G.Z[n] - G.Z[home]) > 250 && G.adj[n].length >= 2) dest = n;
+    }
+    if (dest < 0) return null;
+    const there = shortest(G, home, dest, taxiCost), back = there && shortest(G, dest, home, taxiCost);
+    if (!there || !back) return null;
+    const tr = new Track();
+    const lane = (i, path) => { const e = G.adj[path[i]].find((q) => q.to === path[i + 1]); return e ? e.t : 2; };
+    tr.push(bay.x, bay.z, 0, 2);
+    tr.push(bay.ex, bay.ez, 0, 2);
+    for (let i = 0; i < there.length; i++) { const t = lane(Math.max(0, i - 1), there); tr.push(G.X[there[i]], G.Z[there[i]], laneOffset(t), t); }
+    const sDest = tr.len;
+    for (let i = 1; i < back.length; i++) { const t = lane(i - 1, back); tr.push(G.X[back[i]], G.Z[back[i]], laneOffset(t), t); }
+    tr.push(bay.ex, bay.ez, 0, 2);
+    tr.push(bay.x, bay.z, 0, 2);
+    const v = addVehicle('mpv', tr, { prev: back[back.length - 2] ?? home, node: home, roam: false, taxi: bay, mood: 1.05,
+      stops: [{ s: sDest }, { s: tr.len - 0.3 }], next: 0 });
+    if (!v) return null;
+    paintSlot('mpv', v.slot, C(0xf2f2ef));
+    v.over = taxiExtras();
+    v.over.matrixAutoUpdate = false;
+    group.add(v.over);
+    v.s = 0.5;
+    bay.out = true;
+    if (bay.car) bay.car.visible = false;
+    place(v);
+    return v;
+  }
+  function updateTaxis(dt) {
+    if (!taxis?.length || !taxiPlaces?.length) return;
+    taxiT -= dt;
+    const out = vehicles.filter((v) => v.taxi).length;
+    if (taxiT > 0 || out >= taxiWant) return;
+    const free = taxis.filter((b) => !b.out);
+    if (!free.length) return;
+    if (taxiTrip(free[Math.floor(Math.random() * free.length)])) {
+      taxiT = 25 + Math.random() * 50;
+      taxiWant = Math.random() < 0.45 ? 2 : 1;
+    } else taxiT = 3;
+  }
 
   // ---------------------------------------------------------- linky autobusů
   const busStops = stops?.bus || [];
@@ -1330,9 +1392,11 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       }
     }
     updateBuses(dt);
+    updateTaxis(dt);
     index();
     for (const v of vehicles) step(v, dt);
     for (const v of [...vehicles]) {
+      if (v.taxi && v.next >= v.stops.length) { removeVehicle(v); continue; }      // taxík zpátky na stání
       if (v.jam > (v.stops ? 20 : 7)) {
         if (v.stops || !turnAround(v)) {
           for (const b of buses) if (b.v === v) b.v = null;
@@ -1371,6 +1435,6 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
   }
   return {
     group, update, setEnabled, refreshStops, refreshParked, hitAt, wreck, clearWrecks, setEmergency, emergencyList, get enabled() { return enabled; },
-    debug: { vehicles, trains, lines, buses, railStopS, G, parked, turnAround },
+    debug: { vehicles, trains, lines, buses, railStopS, G, parked, turnAround, taxiTrip, taxis },
   };
 }

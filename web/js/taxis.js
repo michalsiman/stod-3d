@@ -56,6 +56,39 @@ function checkerTexture() {
   return t;
 }
 
+// stání s taxíky (pevně daná): střed stání, směr dovnitř stání (nx, nz), výjezd na kraj vozovky
+const BAYS = (() => {
+  const spots = [];
+  for (const s of STRIPS) for (let i = 0; i < s.n; i++) spots.push({ s, u: s.u0 + i * BAY_W + BAY_W / 2 });
+  const step = spots.length / TAXIS, out = [];
+  for (let i = 0; i < TAXIS; i++) {
+    const { s, u } = spots[Math.min(spots.length - 1, Math.floor(i * step + step / 2))];
+    const [x, z] = P(s, u, ROAD_HW + 0.4 + BAY_D / 2), [ex, ez] = P(s, u, ROAD_HW - 1.2);
+    out.push({ x, z, nx: s.nx, nz: s.nz, ex, ez, car: null, out: false });
+  }
+  return out;
+})();
+
+/** Střešní cedule TAXI a šachovnice po bocích (pro taxík na cestě, karoserie je jinde). */
+let extrasMats = null;
+export function taxiExtras() {
+  extrasMats ||= { signMat: new THREE.MeshLambertMaterial({ map: signTexture(), emissive: 0x403000 }),
+    signTop: new THREE.MeshLambertMaterial({ color: 0xf5c518 }), checker: new THREE.MeshLambertMaterial({ map: checkerTexture() }) };
+  const { signMat, signTop, checker } = extrasMats;
+  const g = new THREE.Group();
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.2, 0.26), [signTop, signTop, signTop, signTop, signMat, signMat]);
+  sign.position.set(-0.25, 1.78, 0);
+  sign.rotation.y = Math.PI / 2;
+  g.add(sign);
+  for (const s of [1, -1]) {
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.12), checker);
+    strip.position.set(-0.1, 0.78, s * 0.935);
+    if (s < 0) strip.rotation.y = Math.PI;
+    g.add(strip);
+  }
+  return g;
+}
+
 export function createTaxiLot({ world }) {
   const T = world.tileAt(cen[0], cen[1]);
   const m = VEHICLES.mpv;
@@ -93,7 +126,7 @@ export function createTaxiLot({ world }) {
     return g;
   }
 
-  return function build(tile, group) {
+  const build = function build(tile, group) {
     if (!T || tile.i !== T.i || tile.j !== T.j) return;
     const pos = [], col = [], lines = [];
     const k = new THREE.Color(0x7f8186);
@@ -129,15 +162,16 @@ export function createTaxiLot({ world }) {
     lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
     lg.computeVertexNormals();
     group.add(new THREE.Mesh(lg, lineMat));
-    // taxíky: rozložené po stáních (každé druhé až třetí), čelem do stání
-    const step = spots.length / TAXIS;
-    for (let i = 0; i < TAXIS; i++) {
-      const { s, u } = spots[Math.min(spots.length - 1, Math.floor(i * step + step / 2))];
-      const [x, z] = P(s, u, ROAD_HW + 0.4 + BAY_D / 2);
+    // taxíky: rozložené po stáních (každé druhé až třetí), čelem do stání; ten, co je zrovna na cestě, je skrytý
+    for (const b of BAYS) {
       const car = taxi();
-      car.position.set(x, y(x, z, 0.01), z);
-      car.rotation.y = Math.atan2(-s.nz, s.nx);             // osa x (předek) dovnitř stání
+      car.position.set(b.x, y(b.x, b.z, 0.01), b.z);
+      car.rotation.y = Math.atan2(-b.nz, b.nx);             // osa x (předek) dovnitř stání
+      car.visible = !b.out;
+      b.car = car;
       group.add(car);
     }
   };
+  build.bays = BAYS;
+  return build;
 }

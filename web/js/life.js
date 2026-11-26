@@ -225,18 +225,19 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     }
   }
   /** Řidič vyskočí z nabouraného auta a utíká pryč (směr fx, fz); po chvíli zmizí. */
-  function addRunner(x, z, fx, fz) {
+  function addRunner(x, z, fx, fz, walk = false) {
     if (waiting.filter((w) => w.run).length >= 16) return;
-    const a = Math.atan2(fz, fx) + (Math.random() - 0.5) * 0.8, sp = 4.5 + Math.random() * 1.5;
-    waiting.push({ stop: null, x, z, yaw: Math.atan2(-Math.sin(a), Math.cos(a)), ph: Math.random() * 6,
-      run: { vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, t: 0, hop: 0 } });
+    const a = Math.atan2(fz, fx) + (Math.random() - 0.5) * 0.8, sp = walk ? 1.2 + Math.random() * 0.4 : 4.5 + Math.random() * 1.5;
+    const w = { stop: null, x, z, yaw: Math.atan2(-Math.sin(a), Math.cos(a)), ph: Math.random() * 6,
+      run: { vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, t: 0, hop: 0, walk, ttl: walk ? 25 : 12 } };
+    waiting.push(w);
   }
   /** Po vypnutí Demolice: pryč se sraženými a utíkajícími. */
   function clearGta() {
     for (let k = people.length - 1; k >= 0; k--) if (people[k].down) people.splice(k, 1);
     for (let k = cyclists.length - 1; k >= 0; k--) if (cyclists[k].down) cyclists.splice(k, 1);
     for (const c of cows) if (c.down) { c.x = c.down.x0 ?? c.x; c.z = c.down.z0 ?? c.z; c.down = null; }
-    for (let k = waiting.length - 1; k >= 0; k--) if (waiting[k].down || waiting[k].run) waiting.splice(k, 1);
+    for (let k = waiting.length - 1; k >= 0; k--) if (waiting[k].down || (waiting[k].run && !waiting[k].run.walk)) waiting.splice(k, 1);
   }
   /** Srazit lidi v dosahu úsečky a–b (auto); vrátí počet nově sražených. */
   function knock(ax0, az0, bx, bz, r, hx, hz, speed) {
@@ -589,10 +590,10 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
           const r = w.run;
           r.t += dt;
           w.x += r.vx * dt * Math.min(1, r.t * 3); w.z += r.vz * dt * Math.min(1, r.t * 3);
-          const hop = r.t < 0.35 ? Math.sin((r.t / 0.35) * Math.PI) * 0.6 : 0;
-          w.ph += dt * 14;
-          if (r.t > 12) { w.dead = true; continue; }
-          setPerson(i, w.x, heightAt(w.x, w.z) + 0.02 + hop, w.z, w.yaw, Math.sin(w.ph) * 0.75);
+          const hop = !r.walk && r.t < 0.35 ? Math.sin((r.t / 0.35) * Math.PI) * 0.6 : 0;
+          w.ph += dt * (r.walk ? 6.5 : 14);
+          if (r.t > r.ttl) { w.dead = true; continue; }
+          setPerson(i, w.x, heightAt(w.x, w.z) + 0.02 + hop, w.z, w.yaw, Math.sin(w.ph) * (r.walk ? 0.42 : 0.75));
           i++;
           continue;
         }

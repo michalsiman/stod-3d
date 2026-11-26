@@ -150,7 +150,8 @@ if (bike?.paths?.length) world.builders.push(createRoads({ roads: bike.paths.map
 const sidewalks = createSidewalks({ roads, buildings, bridges: bridgeInfo, world, blocked: inTaxiLot });
 world.builders.push(sidewalks.build);
 world.builders.push(createSquare({ world }));        // nám. ČSA: parkoviště, park s lavičkami
-world.builders.push(createTaxiLot({ world }));       // konec Sokolské: stání s taxíky
+const taxiLot = createTaxiLot({ world });
+world.builders.push(taxiLot);       // konec Sokolské: stání s taxíky
 world.builders.push(createCemeteries({ cemeteries, roads, buildings, world }));   // hroby na hřbitovech
 world.builders.push(createRoads({ roads, bridges: bridgeInfo, world }), createBridges({ info: bridgeInfo, world }), trees.build, fenceLayer.build, createPower({ power, world }));
 world.lodHooks.push(fenceLayer.lod);
@@ -209,7 +210,11 @@ const drive = createDrive({
 });
 
 // živá mapa: doprava, lidé, zvířata (přepínače si pamatují volbu)
-const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking: [...parking, ...SQUARE_PARKING], coarse: isCoarse, drive });
+// taxíky jezdí z konce Sokolské po Stodě (častěji), do Lelova a do Hradce: [jméno, x, z, poloměr]
+const TAXI_PLACES = [['Stod', ...meta.places.Stod, 650], ['Stod', ...meta.places.Stod, 650], ['Stod', ...meta.places.Stod, 650],
+  ['Lelov', ...meta.places.Lelov, 300], ['Hradec', -3397, -1080, 300]];
+const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking: [...parking, ...SQUARE_PARKING], coarse: isCoarse, drive,
+  taxis: taxiLot.bays, taxiPlaces: TAXI_PLACES, onTaxiStop: (x, z, fx, fz) => life.addRunner(x, z, fx, fz, true) });
 const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, bike, sidewalks, coarse: isCoarse });
 Object.assign(drive.hooks, { traffic, life, trees });
 world.builders.push(() => traffic.refreshStops());
