@@ -383,13 +383,22 @@ function setMode(next) {
   document.body.dataset.mode = mode;
   document.querySelectorAll('#modes [data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   document.getElementById('fly-ctl').hidden = mode !== 'fly';
+  document.getElementById('gta-mode').hidden = mode !== 'drive';      // Demolice jen v autě, ne na hlavní mapě
+  if (mode === 'drive') offerGta();
   document.querySelectorAll('#help [data-help]').forEach((d) => { d.hidden = d.dataset.help !== mode; });
   invalidate();
 }
 
 document.querySelectorAll('#modes [data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 // Demolice: projížďka autem s nárazy naostro (opakované klepnutí ji vypne, auto jede dál)
-function startGta() { setMode('drive'); drive.setGta(true); }
+let gtaOffered = false;
+function offerGta() {
+  if (gtaOffered || drive.gta) return;
+  gtaOffered = true;
+  try { if (localStorage.getItem('stod3d.gtaAd') === '0') return; } catch { /* bez úložiště */ }
+  setTimeout(() => { if (mode === 'drive' && !drive.gta) document.getElementById('gta-ad').hidden = false; }, 700);
+}
+function startGta() { gtaOffered = true; setMode('drive'); drive.setGta(true); }
 document.getElementById('gta-mode').addEventListener('click', () => {
   if (mode === 'drive' && drive.gta) drive.setGta(false); else startGta();
 });
@@ -754,21 +763,16 @@ createTimeControls({ onChange: (pos) => { sunPos = pos; applyLight(); } });
 }
 applyShadows();
 document.getElementById('loader').classList.add('done');
-// reklama na Demolici po načtení (dá se vypnout „Už nezobrazovat“)
+// nabídka Demolice: až když si někdo přepne na auto (jednou za načtení stránky, dá se vypnout „Už nezobrazovat“)
 {
   const ad = document.getElementById('gta-ad');
-  let off = false;
-  try { off = localStorage.getItem('stod3d.gtaAd') === '0'; } catch { /* bez úložiště */ }
-  if (ad && !off && !new URLSearchParams(location.search).has('mark')) {
-    const close = () => {
-      ad.hidden = true;
-      if (ad.querySelector('.ga-never input').checked) { try { localStorage.setItem('stod3d.gtaAd', '0'); } catch { /* bez úložiště */ } }
-    };
-    ad.querySelector('.ga-x').onclick = close;
-    ad.querySelector('.ga-no').onclick = close;
-    ad.addEventListener('click', (e) => { if (e.target === ad) close(); });
-    addEventListener('keydown', (e) => { if (e.code === 'Escape' && !ad.hidden) close(); });
-    ad.querySelector('.ga-go').onclick = () => { close(); document.getElementById('night-tip').hidden = true; startGta(); };
-    setTimeout(() => { if (mode === 'orbit') ad.hidden = false; }, 1500);
-  }
+  const close = () => {
+    ad.hidden = true;
+    if (ad.querySelector('.ga-never input').checked) { try { localStorage.setItem('stod3d.gtaAd', '0'); } catch { /* bez úložiště */ } }
+  };
+  ad.querySelector('.ga-x').onclick = close;
+  ad.querySelector('.ga-no').onclick = close;
+  ad.addEventListener('click', (e) => { if (e.target === ad) close(); });
+  addEventListener('keydown', (e) => { if (e.code === 'Escape' && !ad.hidden) { e.stopImmediatePropagation(); close(); } }, true);
+  ad.querySelector('.ga-go').onclick = () => { close(); document.getElementById('night-tip').hidden = true; startGta(); };
 }
