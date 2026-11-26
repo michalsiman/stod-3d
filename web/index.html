@@ -60,7 +60,7 @@
       <div class="logo" aria-hidden="true">3D</div>
       <div class="brand-text">
         <h1>Stodsko</h1>
-        <p>Stod · Lelov · okolí</p>
+        <p>Stod · Lelov · okolí · <span class="brand-ver" title="Verze a datum vydání">v__VERSION__ (__DATE__)</span></p>
       </div>
       <button id="panel-collapse" class="icon-btn" title="Sbalit / rozbalit menu" aria-expanded="true">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -177,6 +177,17 @@
     <button id="gta-mode" title="Demolice – bourací jízda autem, jen pro legraci">💥 Demolice</button>
   </nav>
 
+  <div id="fly-ctl" hidden aria-label="Ovládání letu">
+    <div class="fc-col"><button data-key="KeyE" title="Výš (E)">⤒<small>výš</small></button><button data-key="KeyQ" title="Níž (Q)">⤓<small>níž</small></button></div>
+    <div class="fc-pad">
+      <button data-key="ArrowUp" class="fc-up" title="Letět dopředu (↑)">▲</button>
+      <button data-key="ArrowLeft" class="fc-l" title="Zatočit doleva (←)">⟲</button>
+      <button data-key="ArrowRight" class="fc-r" title="Zatočit doprava (→)">⟳</button>
+      <button data-key="ArrowDown" class="fc-dn" title="Couvat (↓)">▼</button>
+    </div>
+    <div class="fc-col"><button data-key="LookUp" title="Pohled nahoru (PgUp)">👁<small>nahoru</small></button><button data-key="LookDown" title="Pohled dolů (PgDn)">👁<small>dolů</small></button></div>
+  </div>
+
   <div id="gta-ad" hidden>
     <div class="ga-card panel" role="dialog" aria-modal="true" aria-labelledby="ga-title">
       <span class="ga-ribbon">REKLAMA</span>
@@ -220,9 +231,9 @@
       Na mobilu jedním prstem otáčíte, dvěma posouváte a přibližujete.
     </div>
     <div data-help="fly" hidden>
-      <b>Let</b> · klikněte do scény, myší se rozhlížíte.
-      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> pohyb,
-      <kbd>E</kbd>/<kbd>Q</kbd> nahoru/dolů, <kbd>Shift</kbd> rychle, <kbd>Esc</kbd> uvolní myš.
+      <b>Let</b> · <kbd>↑</kbd>/<kbd>W</kbd> letět dopředu, <kbd>↓</kbd>/<kbd>S</kbd> dozadu,
+      <kbd>←</kbd><kbd>→</kbd> zatáčet, <kbd>E</kbd>/<kbd>Q</kbd> výš/níž, <kbd>PgDn</kbd>/<kbd>PgUp</kbd> pohled dolů/nahoru,
+      <kbd>Shift</kbd> rychle. Nebo tlačítka vpravo dole. Kliknutím do scény se rozhlížíte myší, <kbd>Esc</kbd> ji uvolní.
     </div>
     <div data-help="drive" hidden>
       <b>Auto</b> · <kbd>↑</kbd>/<kbd>W</kbd> plyn, <kbd>↓</kbd>/<kbd>S</kbd> brzda a couvání,

@@ -75,7 +75,7 @@ kbd {
   #title { top: 12px; left: 12px; padding: 8px 12px; }
   #title h1 { font-size: 18px; }
   #modes { top: auto; bottom: 34px; right: 12px; }
-  #modes button[data-mode="fly"], #modes button[data-mode="walk"] { display: none; }
+  #modes button[data-mode="walk"] { display: none; }
   #help { display: none; }
 }
 
@@ -575,3 +575,21 @@ body.history #credits .hist-credit { display: inline; }
 @keyframes ga-bricks { 0%, 51% { opacity: 0; transform: translateY(-30px); } 58%, 90% { opacity: 1; transform: translateY(6px); } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ga-scene *, .ga-go, .ga-card, #gta-ad { animation: none !important; } .ga-bum, .ga-aaa, .ga-bricks { opacity: 1; } }
 @media (max-width: 600px) { #modes #gta-mode { white-space: nowrap; } .ga-card h2 { font-size: 18px; } }
+.brand-ver { opacity: 0.75; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- tlačítka letu (PC i mobil) */
+#fly-ctl { position: fixed; right: 16px; bottom: calc(40px + env(safe-area-inset-bottom)); z-index: 3; display: flex; gap: 10px; align-items: center; }
+#fly-ctl[hidden] { display: none; }
+#fly-ctl button { width: 54px; height: 54px; border-radius: 14px; border: 0; color: #fff; font-size: 22px; line-height: 1;
+  background: rgba(18, 24, 22, 0.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); touch-action: none;
+  user-select: none; -webkit-user-select: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#fly-ctl button small { font-size: 10px; margin-top: 2px; opacity: 0.85; }
+#fly-ctl button.on { background: var(--accent); color: #1b1a17; }
+.fc-col { display: flex; flex-direction: column; gap: 10px; }
+.fc-pad { display: grid; grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(2, 54px); gap: 8px; }
+.fc-up { grid-column: 2; grid-row: 1; } .fc-l { grid-column: 1; grid-row: 2; } .fc-r { grid-column: 3; grid-row: 2; } .fc-dn { grid-column: 2; grid-row: 2; }
+@media (max-width: 600px) {
+  #fly-ctl { left: 12px; right: 12px; bottom: calc(92px + env(safe-area-inset-bottom)); justify-content: space-between; gap: 6px; }
+  #fly-ctl button { width: 50px; height: 50px; }
+  .fc-pad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(2, 50px); gap: 6px; }
+}

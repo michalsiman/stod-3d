@@ -382,6 +382,7 @@ function setMode(next) {
   document.body.classList.toggle('driving', mode === 'drive');
   document.body.dataset.mode = mode;
   document.querySelectorAll('#modes [data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('fly-ctl').hidden = mode !== 'fly';
   document.querySelectorAll('#help [data-help]').forEach((d) => { d.hidden = d.dataset.help !== mode; });
   invalidate();
 }
@@ -429,16 +430,26 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyR') flyTo('Stod');
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
+// tlačítka letu: podržení = stisknutá klávesa
+document.querySelectorAll('#fly-ctl [data-key]').forEach((b) => {
+  const k = b.dataset.key;
+  const on = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* bez zachycení */ } keys.add(k); b.classList.add('on'); dirty = true; };
+  const off = () => { keys.delete(k); b.classList.remove('on'); };
+  b.addEventListener('pointerdown', on);
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, off);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+});
 addEventListener('blur', () => keys.clear());
 
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
 // létání: dopředu/dozadu/do stran vodorovně a ve stále stejné výšce nad terénem (kopce kopíruje),
 // výšku mění jen Q/E – i když se díváš dolů, letí se rovně, ne do země
-let flyAgl = null;
+let flyAgl = null, flyTurn = 0, flyRoll = 0;
+const flyEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 function updateFree(dt) {
   const walk = mode === 'walk';
   const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
-  const speed = walk ? (fast ? 9 : 3) : (fast ? 220 : 50);
+  const speed = walk ? (fast ? 9 : 3) : (fast ? 440 : 100);
   const ground = () => world.heightAt(camera.position.x, camera.position.z);
   if (!walk && flyAgl === null) flyAgl = 80;                 // let začíná 80 m nad terénem
   camera.getWorldDirection(fwd);
@@ -449,9 +460,29 @@ function updateFree(dt) {
   move.set(0, 0, 0);
   if (keys.has('KeyW') || keys.has('ArrowUp')) move.add(fwd);
   if (keys.has('KeyS') || keys.has('ArrowDown')) move.sub(fwd);
-  if (keys.has('KeyD') || keys.has('ArrowRight')) move.add(right);
-  if (keys.has('KeyA') || keys.has('ArrowLeft')) move.sub(right);
+  if (walk) {
+    if (keys.has('KeyD') || keys.has('ArrowRight')) move.add(right);
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) move.sub(right);
+  }
   if (move.lengthSq()) { camera.position.addScaledVector(move.normalize(), speed * dt); dirty = true; }
+  if (!walk) {
+    // zatáčení jako letadlo: ←/→ (A/D) otáčí směr letu a letadlo se do zatáčky nakloní;
+    // PageDown/PageUp (nebo tlačítka) sklání pohled dolů / zvedá nahoru
+    const turn = ((keys.has('KeyA') || keys.has('ArrowLeft')) ? 1 : 0) - ((keys.has('KeyD') || keys.has('ArrowRight')) ? 1 : 0);
+    flyTurn += (turn * 0.75 - flyTurn) * Math.min(1, dt * 3);
+    if (Math.abs(flyTurn) < 1e-3 && !turn) flyTurn = 0;
+    const tilt = (keys.has('PageDown') || keys.has('LookDown') ? -1 : 0) + (keys.has('PageUp') || keys.has('LookUp') ? 1 : 0);
+    if (flyTurn || tilt || flyRoll) {
+      flyEuler.setFromQuaternion(camera.quaternion, 'YXZ');
+      flyEuler.y += flyTurn * dt;
+      flyEuler.x = THREE.MathUtils.clamp(flyEuler.x + tilt * 0.9 * dt, -1.5, 0.6);
+      flyEuler.z = flyTurn * 0.45;                                   // náklon do zatáčky
+      if (Math.abs(flyEuler.z) < 1e-3) flyEuler.z = 0;
+      flyRoll = flyEuler.z;
+      camera.quaternion.setFromEuler(flyEuler);
+      dirty = true;
+    }
+  }
   if (!walk) {
     const up = (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0);
     if (up) flyAgl = THREE.MathUtils.clamp(flyAgl + up * speed * dt * Math.max(1, flyAgl / 150), 3, 3000);
