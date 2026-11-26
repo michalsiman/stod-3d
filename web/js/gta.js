@@ -124,3 +124,56 @@ export function createDebris(scene, world) {
     clear() { im.count = 0; next = 0; },
   };
 }
+
+/** Kouř z nabouraných aut: měkké šedé obláčky, stoupají a rozplývají se. Zdroj = funkce vracející [x, y, z] nebo null. */
+export function createSmoke(scene) {
+  const MAX = 900;
+  const pos = new Float32Array(MAX * 3), size = new Float32Array(MAX), alpha = new Float32Array(MAX);
+  const vel = new Float32Array(MAX * 3), age = new Float32Array(MAX).fill(99), life = new Float32Array(MAX).fill(1);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('size', new THREE.BufferAttribute(size, 1));
+  g.setAttribute('alpha', new THREE.BufferAttribute(alpha, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { scale: { value: 600 } },
+    vertexShader: `attribute float size; attribute float alpha; varying float vA; uniform float scale;
+      void main() { vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = size * scale / -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vA; void main() { float d = length(gl_PointCoord - .5) * 2.; if (d > 1.) discard;
+      gl_FragColor = vec4(vec3(.32, .31, .3), vA * (1. - d * d)); }`,
+    transparent: true, depthWrite: false,
+  });
+  const pts = new THREE.Points(g, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  const sources = [];
+  let next = 0;
+  return {
+    add(fn, rate = 10) { sources.push({ fn, rate, acc: Math.random() }); },
+    update(dt, camera, viewH) {
+      mat.uniforms.scale.value = viewH / (2 * Math.tan((camera.fov * Math.PI) / 360));
+      for (let i = sources.length - 1; i >= 0; i--) {
+        const s = sources[i], p = s.fn();
+        if (!p) { sources.splice(i, 1); continue; }
+        if (Math.hypot(p[0] - camera.position.x, p[2] - camera.position.z) > 400) continue;
+        s.acc += dt * s.rate;
+        while (s.acc >= 1) {
+          s.acc -= 1;
+          const k = next; next = (next + 1) % MAX;
+          pos[k * 3] = p[0] + (Math.random() - 0.5) * 0.6; pos[k * 3 + 1] = p[1]; pos[k * 3 + 2] = p[2] + (Math.random() - 0.5) * 0.6;
+          vel[k * 3] = (Math.random() - 0.5) * 0.5 + 0.3; vel[k * 3 + 1] = 1 + Math.random() * 0.8; vel[k * 3 + 2] = (Math.random() - 0.5) * 0.5;
+          age[k] = 0; life[k] = 2.5 + Math.random() * 1.5;
+        }
+      }
+      for (let k = 0; k < MAX; k++) {
+        if (age[k] >= life[k]) { alpha[k] = 0; size[k] = 0; continue; }
+        age[k] += dt;
+        const t = age[k] / life[k];
+        pos[k * 3] += vel[k * 3] * dt; pos[k * 3 + 1] += vel[k * 3 + 1] * dt; pos[k * 3 + 2] += vel[k * 3 + 2] * dt;
+        size[k] = 0.7 + t * 3.2;
+        alpha[k] = Math.min(1, t * 6) * (1 - t) * 0.55;
+      }
+      g.attributes.position.needsUpdate = g.attributes.size.needsUpdate = g.attributes.alpha.needsUpdate = true;
+    },
+    clear() { sources.length = 0; age.fill(99); alpha.fill(0); g.attributes.alpha.needsUpdate = true; },
+  };
+}

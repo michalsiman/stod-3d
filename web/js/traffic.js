@@ -505,6 +505,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     return v;
   }
   function removeVehicle(v) {
+    v.gone = true;
     pool.release(v.kind, v.slot);
     if (v.trailer) pool.release(v.trailer.kind, v.trailer.slot);
     vehicles.splice(vehicles.indexOf(v), 1);
@@ -715,25 +716,57 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       im.getColorAt(slot, c); im.setColorAt(slot, c.multiplyScalar(0.72)); im.instanceColor.needsUpdate = true;
     }
   }
+  /** Po vypnutí Demolice: nabouraná auta pryč, zaparkovaná zpátky celá na místo. */
+  function clearWrecks() {
+    for (const b of buses) if (b.v?.wreck) b.v = null;
+    for (const v of [...vehicles]) if (v.wreck) removeVehicle(v);
+    flying.length = 0;
+    const c3 = new THREE.Color();
+    for (const c of parked) {
+      if (!c.wreck) continue;
+      c.p = c.wreck.p0; c.d = c.wreck.d0;
+      for (const im of ppool.pools[c.kind].meshes) {
+        if (!im.instanceColor) continue;
+        im.getColorAt(c.slot, c3); im.setColorAt(c.slot, c3.multiplyScalar(1 / 0.72)); im.instanceColor.needsUpdate = true;
+      }
+      c.wreck = null;
+    }
+    refreshParked();
+    pool.flush();
+  }
   /** Nabourat vozidlo (režim GTA); false, když už nabourané je. */
   function wreck(o, hx, hz, speed) {
-    if (o.wreck) return false;
-    const k = Math.min(1, speed / 14), push = Math.min(6, 1 + speed * 0.32), side = Math.random() < 0.5 ? -1 : 1;
-    o.wreck = { sx: hx * push, sz: hz * push, yaw: side * (0.4 + Math.random() * 0.9) * k, roll: (Math.random() - 0.5) * 0.25 * k,
-      pitch: (Math.random() - 0.5) * 0.14 * k, sc: [0.86 - 0.08 * k * Math.random(), 0.8 - 0.1 * k, 0.94 + 0.1 * k],
-      hop: 0.25 + 0.6 * k, e: 0, b: null, m: null };
+    // každý další náraz do už nabouraného auta ho znovu kus odhodí (a trochu víc zmačká);
+    // vrací 'first' (první náraz), 'again' (další) nebo false (těsně po předchozím nárazu)
+    const now = performance.now(), old = o.wreck;
+    if (old && (now - old.at < 450 || (!old.b && !o.p))) return false;
+    const hits = (old?.hits || 0) + 1;
+    const k = Math.min(1, speed / 14), side = Math.random() < 0.5 ? -1 : 1;
+    const push = old ? Math.min(5, 0.8 + speed * 0.25) : Math.min(6, 1 + speed * 0.32);
+    const w = { sx: hx * push, sz: hz * push, yaw: side * (old ? 0.2 + Math.random() * 0.5 : 0.4 + Math.random() * 0.9) * k,
+      roll: (Math.random() - 0.5) * (old ? 0.08 : 0.25) * k, pitch: (Math.random() - 0.5) * (old ? 0.05 : 0.14) * k,
+      sc: old ? (hits < 7 ? [0.97, 0.96, 1.01] : [1, 1, 1]) : [0.86 - 0.08 * k * Math.random(), 0.8 - 0.1 * k, 0.94 + 0.1 * k],
+      hop: (old ? 0.15 : 0.25) + 0.5 * k, e: 0, b: null, m: null, p0: old ? old.p0 : o.p, d0: old ? old.d0 : o.d, hits, at: now };
     if (o.p) {                                         // zaparkované
-      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-o.d[1], o.d[0]));
-      o.wreck.b = base.compose(new THREE.Vector3(o.p[0], world.heightAt(o.p[0], o.p[1]) + 0.04, o.p[1]), q, new THREE.Vector3(1, 1, 1)).clone();
-      o.wreck.m = deform(o.wreck.b, o.wreck);
-      flying.push(o);
-      darken(ppool.pools[o.kind], o.slot);
+      if (old) w.b = old.m || deform(old.b, old);
+      else {
+        const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-o.d[1], o.d[0]));
+        w.b = base.compose(new THREE.Vector3(o.p[0], world.heightAt(o.p[0], o.p[1]) + 0.04, o.p[1]), q, new THREE.Vector3(1, 1, 1)).clone();
+        darken(ppool.pools[o.kind], o.slot);
+      }
+      o.wreck = w;
+      w.m = deform(w.b, w);
+      if (!flying.includes(o)) flying.push(o);
     } else {
+      if (old) { w.b = deform(old.b, old); w.tm = old.tm; }
+      o.wreck = w;
       o.v = 0;
-      darken(pool.pools[o.kind], o.slot);
-      if (o.trailer) darken(pool.pools[o.trailer.kind], o.trailer.slot);
+      if (!old) {
+        darken(pool.pools[o.kind], o.slot);
+        if (o.trailer) darken(pool.pools[o.trailer.kind], o.trailer.slot);
+      }
     }
-    return true;
+    return old ? 'again' : 'first';
   }
 
   // ---------------------------------------------------------- linky autobusů
@@ -1229,7 +1262,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     }
   }
   return {
-    group, update, setEnabled, refreshStops, refreshParked, hitAt, wreck, get enabled() { return enabled; },
+    group, update, setEnabled, refreshStops, refreshParked, hitAt, wreck, clearWrecks, get enabled() { return enabled; },
     debug: { vehicles, trains, lines, buses, railStopS, G, parked },
   };
 }

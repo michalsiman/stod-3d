@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NIGHT } from './night.js';
-import { bang, scream, createDebris } from './gta.js';
+import { bang, scream, createDebris, createSmoke } from './gta.js';
 
 // Projížďka autem: arkádová jízda po silnicích a cestách Stodska.
 //   Rychlost podle povrchu (silnice, ulice, štěrk, polní cesta, mimo cestu), náklon auta podle terénu,
@@ -17,7 +17,6 @@ const SURFACE_NAME = ['silnice I. třídy', 'silnice', 'ulice', 'asfaltová cest
   'polní cesta', 'pěšina', 'železnice'];
 const OFFROAD = { max: 16.7, grip: 0.6, rolling: 1.6 };
 const CELL = 32;
-const WHEELBASE = 2.6;
 
 // ---------------------------------------------------------------- prostorové indexy
 function segIndex(lines) {
@@ -134,7 +133,8 @@ function mergeByMaterial(group) {
 }
 
 /** Nízkopolygonové auto (x dopředu, y nahoru, délka 4,4 m): karoserie, prosklená kabina, střecha, kola, světla. */
-export function createCarModel(paint = PAINTS[0], { lights = true } = {}) {
+export function createCarModel(paint = PAINTS[0], { lights = true, type = 'car' } = {}) {
+  if (type !== 'car') return buildVehicle(type, paint, lights);
   const car = new THREE.Group();
   const body = new THREE.Group();
   car.add(body);
@@ -224,7 +224,123 @@ export function createCarModel(paint = PAINTS[0], { lights = true } = {}) {
     body.add(sp, sp.target);
     beams.push(sp);
   }
-  return { car, body, wheels, beams, head, tail, paintMat };
+  return { car, body, wheels, beams, head, tail, paintMat, spec: SPECS.car };
+}
+
+// ---------------------------------------------------------------- další typy vlastního auta
+// spec: nose/tail = přední a zadní hrana od středu, wb = rozvor, vmax/acc = násobky rychlosti a zrychlení,
+// off = násobek rychlosti mimo cestu, cap = nejvyšší rychlost (m/s), cam = násobek vzdálenosti kamery
+const SPECS = {
+  car: { name: 'Osobní auto', nose: 2.25, tail: 2.25, wb: 2.6, vmax: 1, acc: 1, off: 1, cap: 50, cam: 1, hw: 0.95 },
+  race: { name: 'Závoďák', nose: 2.4, tail: 2.3, wb: 2.85, vmax: 1.4, acc: 1.7, off: 0.7, cap: 75, cam: 1, hw: 1.0, grip: 1.2 },
+  offroad: { name: 'Teréňák', nose: 2.4, tail: 2.45, wb: 2.9, vmax: 0.95, acc: 1, off: 1.9, cap: 45, cam: 1.15, hw: 1.0, offGrip: 1 },
+  truck: { name: 'Náklaďák', nose: 3.5, tail: 3.9, wb: 4.95, vmax: 0.72, acc: 0.5, off: 0.8, cap: 25, cam: 1.6, hw: 1.25 },
+  tractor: { name: 'Traktor', nose: 2.05, tail: 1.65, wb: 2.35, vmax: 1, acc: 0.55, off: 1, cap: 11.2, cam: 1.25, hw: 1.1, offGrip: 1 },
+};
+const CAR_TYPES = Object.keys(SPECS);
+
+function buildVehicle(type, paint, lights) {
+  const spec = SPECS[type];
+  const car = new THREE.Group();
+  const body = new THREE.Group();
+  car.add(body);
+  const paintMat = new THREE.MeshStandardMaterial({ color: paint, roughness: 0.32, metalness: 0.3 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x223040, roughness: 0.06, metalness: 0.7 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1c1d20, roughness: 0.85 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xd8dbe0, roughness: 0.25, metalness: 0.9 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.5 });
+  const head = new THREE.MeshStandardMaterial({ color: 0xfff6dc, emissive: 0xfff2c8, emissiveIntensity: 0.6 });
+  const tail = new THREE.MeshStandardMaterial({ color: 0x8a0f12, emissive: 0xff2020, emissiveIntensity: 0.5 });
+  const box = (sx, sy, sz, x, y, z, mat, parent = body) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
+    m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m;
+  };
+  const wheels = [];
+  const wheel = (x, z, r, w, front) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, r, z);
+    const spin = new THREE.Group();
+    spin.add(new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 24).rotateX(Math.PI / 2), dark));
+    spin.add(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.6, r * 0.6, w + 0.01, 12).rotateX(Math.PI / 2), type === 'tractor' ? white : chrome));
+    for (let k = 0; k < 3; k++) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, r * 1.1, w + 0.015), dark); h.rotation.z = (k * Math.PI) / 3; spin.add(h); }
+    if (r > 0.6) for (let k = 0; k < 12; k++) {                 // vzorek traktorové pneumatiky
+      const a = (k / 12) * Math.PI * 2, l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, w * 0.9), dark);
+      l.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); l.rotation.z = a; spin.add(l);
+    }
+    spin.children.forEach((c) => { c.castShadow = true; });
+    mergeByMaterial(spin);
+    pivot.add(spin);
+    car.add(pivot);
+    wheels.push({ pivot, spin, front, r });
+  };
+  let headPos = [], tailPos = [];
+  if (type === 'race') {
+    const W = 1.96;
+    body.add(extrude(shape([[-2.25, 0.18], [2.25, 0.18], ['q', 2.42, 0.2, 2.42, 0.36], ['q', 2.32, 0.5, 1.6, 0.6], [0.55, 0.74],
+      [-1.75, 0.82], ['q', -2.3, 0.82, -2.3, 0.56], [-2.3, 0.3], ['q', -2.3, 0.18, -2.25, 0.18]]), W, 0.08, paintMat));
+    body.add(extrude(shape([[0.62, 0.72], ['q', 0.05, 0.8, -0.35, 1.1], [-0.95, 1.12], ['q', -1.35, 1.08, -1.72, 0.8], [0.62, 0.72]]), W - 0.5, 0.05, glass));
+    box(0.42, 0.05, W, -2.05, 1.12, 0, paintMat);                            // spoiler
+    for (const z of [0.6, -0.6]) box(0.12, 0.34, 0.05, -2.05, 0.95, z, dark);
+    box(4.5, 0.02, 0.26, 0, 0.64, 0.25, white); box(4.5, 0.02, 0.26, 0, 0.64, -0.25, white);   // pruhy přes kapotu
+    for (const z of [W / 2 + 0.01, -W / 2 - 0.01]) box(1.4, 0.12, 0.02, -0.3, 0.42, z, white);
+    box(0.2, 0.1, W + 0.04, 2.36, 0.2, 0, dark);
+    wheel(1.5, 0.86, 0.33, 0.3, true); wheel(1.5, -0.86, 0.33, 0.3, true);
+    wheel(-1.35, 0.88, 0.35, 0.34, false); wheel(-1.35, -0.88, 0.35, 0.34, false);
+    headPos = [2.38, 0.42, 0.62]; tailPos = [-2.31, 0.58, 0.68];
+  } else if (type === 'offroad') {
+    const W = 1.95;
+    body.add(extrude(shape([[-2.25, 0.62], [2.22, 0.62], [2.32, 0.76], [2.32, 1.2], [2.15, 1.3], [0.95, 1.36], [-2.22, 1.38], [-2.32, 1.26], [-2.32, 0.72]]), W, 0.06, paintMat));
+    body.add(extrude(shape([[0.97, 1.34], [0.55, 1.98], [-2.1, 2.0], [-2.24, 1.37]]), W - 0.16, 0.04, glass));
+    box(2.75, 0.08, W - 0.1, -0.78, 2.03, 0, paintMat);
+    for (const x of [-1.8, -1.1, -0.4, 0.3]) box(0.06, 0.06, W - 0.2, x, 2.13, 0, dark);   // střešní nosič
+    for (const z of [0.85, -0.85]) box(2.4, 0.06, 0.06, -0.75, 2.16, z, dark);
+    box(0.12, 0.42, W - 0.3, 2.42, 0.92, 0, dark);                          // ochranný rám
+    box(0.16, 0.14, W + 0.04, 2.36, 0.66, 0, dark); box(0.16, 0.14, W + 0.04, -2.36, 0.66, 0, dark);
+    const spare = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.28, 20).rotateZ(Math.PI / 2), dark);
+    spare.position.set(-2.5, 1.12, 0); body.add(spare);
+    for (const z of [W / 2 + 0.03, -W / 2 - 0.03]) box(4.3, 0.18, 0.04, 0, 0.7, z, dark);   // lemy
+    wheel(1.45, 0.92, 0.46, 0.34, true); wheel(1.45, -0.92, 0.46, 0.34, true);
+    wheel(-1.45, 0.92, 0.46, 0.34, false); wheel(-1.45, -0.92, 0.46, 0.34, false);
+    headPos = [2.34, 1.04, 0.66]; tailPos = [-2.34, 1.0, 0.8];
+  } else if (type === 'truck') {
+    const W = 2.4;
+    box(7.2, 0.3, 1.2, -0.25, 0.82, 0, dark);                                 // rám
+    body.add(extrude(shape([[1.6, 0.95], [3.45, 0.95], [3.45, 2.2], [3.3, 2.95], [1.6, 3.0]]), W, 0.06, paintMat));   // kabina
+    box(0.05, 0.75, W - 0.3, 3.4, 2.5, 0, glass);
+    for (const z of [W / 2 - 0.2, -W / 2 + 0.2]) box(0.9, 0.55, 0.05, 2.75, 2.35, z * 1.02 + Math.sign(z) * 0.04, glass);
+    box(5.3, 2.35, W + 0.05, -1.25, 2.2, 0, white);                           // skříň
+    box(5.32, 0.12, W + 0.07, -1.25, 1.06, 0, paintMat);
+    box(0.2, 0.25, W + 0.05, 3.5, 0.78, 0, dark);
+    wheel(2.5, 1.02, 0.52, 0.42, true); wheel(2.5, -1.02, 0.52, 0.42, true);
+    for (const x of [-1.9, -3.05]) { wheel(x, 1.02, 0.52, 0.42, false); wheel(x, -1.02, 0.52, 0.42, false); }
+    headPos = [3.47, 1.15, 0.85]; tailPos = [-3.92, 1.15, 1.0];
+  } else {                                                                   // traktor
+    box(3.4, 0.35, 0.7, 0.3, 0.75, 0, dark);
+    body.add(extrude(shape([[0.15, 0.75], [1.95, 0.75], [2.05, 0.9], [2.05, 1.3], [1.9, 1.42], [0.15, 1.48]]), 0.86, 0.05, paintMat));   // kapota
+    box(0.04, 0.4, 0.6, 2.06, 1.08, 0, dark);                                 // maska
+    box(1.6, 1.25, 1.3, -0.65, 1.87, 0, glass);                               // kabina
+    box(1.85, 0.12, 1.5, -0.65, 2.55, 0, paintMat);
+    for (const [x, z] of [[0.13, 0.66], [0.13, -0.66], [-1.43, 0.66], [-1.43, -0.66]]) box(0.07, 1.3, 0.07, x, 1.88, z, dark);
+    for (const z of [0.86, -0.86]) box(1.5, 0.08, 0.55, -0.85, 1.66, z, paintMat);   // blatníky
+    box(1.6, 0.3, 1.1, -0.65, 1.2, 0, paintMat);
+    const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.0, 10), dark);
+    ex.position.set(1.55, 1.95, 0.3); body.add(ex);
+    wheel(1.4, 0.72, 0.45, 0.3, true); wheel(1.4, -0.72, 0.45, 0.3, true);
+    wheel(-0.85, 0.86, 0.8, 0.5, false); wheel(-0.85, -0.86, 0.8, 0.5, false);
+    headPos = [2.07, 1.2, 0.3]; tailPos = [-1.48, 1.55, 0.6];
+  }
+  for (const z of [headPos[2], -headPos[2]]) box(0.06, 0.14, 0.34, headPos[0], headPos[1], z, head);
+  for (const z of [tailPos[2], -tailPos[2]]) box(0.06, 0.16, 0.36, tailPos[0], tailPos[1], z, tail);
+  mergeByMaterial(body);
+  const beams = [];
+  for (const z of lights ? [0.55, -0.55] : []) {
+    const sp = new THREE.SpotLight(0xfff1d6, 0, 70, 0.45, 0.6, 1.2);
+    sp.position.set(headPos[0], headPos[1], z);
+    sp.target.position.set(headPos[0] + 10, -0.6, z * 3);
+    body.add(sp, sp.target);
+    beams.push(sp);
+  }
+  return { car, body, wheels, beams, head, tail, paintMat, spec };
 }
 
 // ---------------------------------------------------------------- zvuk motoru
@@ -281,12 +397,13 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   };
   /** Sloup, do kterého auto (úsečka ±2 m podél osy, poloviční šířka 0,95 m) vjede při posunu z (x0,z0,h0) na (x1,z1,h1). */
   function poleHit(x0, z0, h0, x1, z1, h1) {
-    const c1 = Math.cos(h1) * 2, s1 = Math.sin(h1) * 2, c0 = Math.cos(h0) * 2, s0 = Math.sin(h0) * 2;
+    const L = (model.spec.nose + model.spec.tail) / 2 - 0.25;
+    const c1 = Math.cos(h1) * L, s1 = Math.sin(h1) * L, c0 = Math.cos(h0) * L, s0 = Math.sin(h0) * L;
     const cx = Math.floor(x1 / 20), cz = Math.floor(z1 / 20);
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
       for (const o of poleGrid.get(`${cx + a},${cz + b}`) || []) {
         const d1 = segD(o[0], o[1], x1 - c1, z1 - s1, x1 + c1, z1 + s1);
-        if (d1 > o[2] + 0.95) continue;
+        if (d1 > o[2] + model.spec.hw) continue;
         if (d1 < segD(o[0], o[1], x0 - c0, z0 - s0, x0 + c0, z0 + s0) - 1e-4) return o;
       }
     }
@@ -295,10 +412,13 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   // napojí main.js (doprava a lidé vznikají až po autě)
   const hooks = { traffic: null, life: null };
   const debris = createDebris(scene, world);
+  const smoke = createSmoke(scene);
 
   let paintIdx = 0;
   try { paintIdx = +(localStorage.getItem('stod3d.paint') || 0) % PAINTS.length; } catch { /* ignorovat */ }
-  const model = createCarModel(PAINTS[paintIdx]);
+  let carType = 'car';
+  try { const t = localStorage.getItem('stod3d.carType'); if (SPECS[t]) carType = t; } catch { /* ignorovat */ }
+  let model = createCarModel(PAINTS[paintIdx], { type: carType });
   model.car.visible = false;
   scene.add(model.car);
   const sound = createEngineSound();
@@ -322,6 +442,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     <div class="dh-tools">
       <button data-act="goal" title="Cíl jízdy – náhodná zajímavost v okolí (T)">🎯</button>
       <button data-act="view" title="Pohled (C)">🎥</button>
+      <button data-act="type" title="Typ auta – osobní, závoďák, teréňák, náklaďák, traktor (K)">🚙</button>
       <button data-act="paint" title="Barva auta (P)">🎨</button>
       <button data-act="sound" title="Zvuk (M)">🔊</button>
       <button data-act="gta" title="Demolice – nárazy naostro, jen pro legraci (G)">💥</button>
@@ -423,6 +544,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   hud.querySelector('[data-act=view]').onclick = () => cycleView();
   hud.querySelector('[data-act=goal]').onclick = () => newGoal();
   hud.querySelector('[data-act=paint]').onclick = () => repaint();
+  hud.querySelector('[data-act=type]').onclick = () => changeType();
   hud.querySelector('[data-act=sound]').onclick = () => toggleSound();
   hud.querySelector('[data-act=exit]').onclick = () => onExit?.();
   const soundBtn = hud.querySelector('[data-act=sound]');
@@ -433,6 +555,19 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     paintIdx = (paintIdx + 1) % PAINTS.length;
     model.paintMat.color.setHex(PAINTS[paintIdx]);
     try { localStorage.setItem('stod3d.paint', String(paintIdx)); } catch { /* ignorovat */ }
+  }
+  // typ auta: postaví nový model (barva zůstane), promáčkliny se tím opraví
+  function changeType() {
+    carType = CAR_TYPES[(CAR_TYPES.indexOf(carType) + 1) % CAR_TYPES.length];
+    try { localStorage.setItem('stod3d.carType', carType); } catch { /* ignorovat */ }
+    const vis = model.car.visible;
+    scene.remove(model.car);
+    model.car.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+    model = createCarModel(PAINTS[paintIdx], { type: carType });
+    model.car.visible = vis;
+    scene.add(model.car);
+    orig.clear(); dents = 0;
+    flash(`Auto: ${model.spec.name}`);
   }
   function toggleSound() { soundBtn.textContent = sound.toggle() ? '🔊' : '🔇'; }
 
@@ -452,14 +587,38 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     gtaBtn.classList.toggle('on', on);
     scoreEl.hidden = !on || !st.active;
     if (on) { Object.keys(score).forEach((k) => { score[k] = 0; }); showScore(); flash('Demolice zapnuta – jen pro legraci!'); }
-    else { model.body.scale.set(1, 1, 1); model.body.rotation.y = 0; repair(); flash('Demolice vypnuta'); }
+    else {
+      // všechno zmizí: zmačkaná auta, ležící a utíkající lidé, trosky, kouř, promáčkliny
+      model.body.scale.set(1, 1, 1); model.body.rotation.y = 0; repair();
+      hooks.traffic?.clearWrecks(); hooks.life?.clearGta(); debris.clear(); smoke.clear(); ownSmoke = false;
+      if (st.active) flash('Demolice vypnuta');
+    }
     onGta?.(on);
   }
   gtaBtn.onclick = () => setGta(!gta);
   // vlastní auto se mačká: body karoserie u místa nárazu se promáčknou dovnitř (s „vlnkami“ plechu),
   // každá rána přidá další; po vypnutí Demolice je auto zase celé
   const orig = new Map();
-  let dents = 0;
+  let dents = 0, ownSmoke = false;
+  // z nabouraného auta se kouří a vyskočí řidič, křičí a utíká pryč
+  function afterWreck(o) {
+    const pos = () => (o.p ? [o.p[0], o.p[1]] : [o.x, o.z]);
+    smoke.add(() => {
+      if (o.gone || !o.wreck) return null;
+      const [x, z] = pos();
+      return [x, world.heightAt(x, z) + 1.2, z];
+    }, 9);
+    if (o.p && Math.random() > 0.35) return;            // zaparkované auto bývá prázdné
+    setTimeout(() => {
+      if (!gta || o.gone || !o.wreck || !hooks.life) return;
+      const [x, z] = pos();
+      let fx = x - st.x, fz = z - st.z;
+      const l = Math.hypot(fx, fz) || 1; fx /= l; fz /= l;
+      const side = Math.random() < 0.5 ? 1 : -1;
+      hooks.life.addRunner(x - fz * side * 1.6, z + fx * side * 1.6, fx * 0.6 - fz * side, fz * 0.6 + fx * side);
+      scream(); setTimeout(scream, 900 + Math.random() * 500);
+    }, 650);
+  }
   const hash = (x, y, z, sd) => { const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + sd) * 43758.5453; return h - Math.floor(h); };
   function crumple(lx, ly, lz, nx, nz, depth, R) {
     const sd = Math.random() * 100;
@@ -481,12 +640,20 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   }
   function dent(k, where = 'front', lat = 0) {
     if (dents++ > 60) return;
+    if (dents >= 7 && !ownSmoke) {                      // hodně zmačkané auto se kouří z kapoty
+      ownSmoke = true;
+      smoke.add(() => {
+        if (!gta || !st.active) { ownSmoke = false; return null; }
+        return [st.x + Math.cos(st.heading) * (model.spec.nose - 0.7), st.y + 1.1 * model.spec.cam, st.z + Math.sin(st.heading) * (model.spec.nose - 0.7)];
+      }, 6);
+    }
     const b = model.body;
     b.scale.y = Math.max(0.92, b.scale.y - 0.004 * k);
     b.rotation.y = THREE.MathUtils.clamp(b.rotation.y + (Math.random() - 0.5) * 0.02 * k, -0.05, 0.05);
     const depth = 0.1 + 0.28 * k, R = 0.6 + 0.6 * k, z = THREE.MathUtils.clamp(lat + (Math.random() - 0.5) * 0.8, -0.85, 0.85);
-    if (where === 'back') crumple(-2.25, 0.55 + Math.random() * 0.4, z, 1, -z * 0.2, depth, R);
-    else crumple(2.25, 0.55 + Math.random() * 0.4, z, -1, -z * 0.2, depth, R);
+    const sp = model.spec, big = sp.cam;
+    if (where === 'back') crumple(-sp.tail, (0.55 + Math.random() * 0.4) * big, z * big, 1, -z * 0.2, depth, R * big);
+    else crumple(sp.nose, (0.55 + Math.random() * 0.4) * big, z * big, -1, -z * 0.2, depth, R * big);
     if (k > 0.6 && Math.random() < 0.5) crumple(0.3 * (Math.random() - 0.5), 1.5, z * 0.5, 0, 0, 0.12 * k, 1.1);   // promáčklá střecha
   }
   function repair() {
@@ -706,6 +873,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   }
 
   function stop() {
+    setGta(false);                                     // po vystoupení z auta Demolice končí a vše se uklidí
     st.active = false;
     model.car.visible = false;
     hideTraffic();
@@ -723,7 +891,9 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   const fwd = new THREE.Vector3(), tmpV = new THREE.Vector3();
   function placeCamera(instant, dt = 0.016) {
     const cx = Math.cos(st.heading), cz = Math.sin(st.heading);
-    const [back, up, ahead] = st.view === 0 ? [8.2, 3.4, 5] : st.view === 1 ? [17, 9, 6] : [-0.2, 1.32, 20];
+    const cm = model.spec.cam;
+    const [back, up, ahead] = st.view === 0 ? [8.2 * cm, 3.4 * cm, 5] : st.view === 1 ? [17 * cm, 9 * cm, 6]
+      : [{ truck: -2.6, tractor: 0.65 }[carType] ?? -0.2, { truck: 2.55, tractor: 2.25, offroad: 1.75 }[carType] ?? 1.32, 20];
     const want = tmpV.set(st.x - cx * back, st.y + up, st.z - cz * back);
     if (st.view !== 2) want.y = Math.max(want.y, world.heightAt(want.x, want.z) + 1.2);
     const look = fwd.set(st.x + cx * ahead, st.y + (st.view === 2 ? 1.2 : 1.1), st.z + cz * ahead);
@@ -741,6 +911,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     if (e.code === 'KeyC') cycleView();
     if (e.code === 'KeyT') newGoal();
     if (e.code === 'KeyP') repaint();
+    if (e.code === 'KeyK') changeType();
     if (e.code === 'KeyM') toggleSound();
     if (e.code === 'KeyG') setGta(!gta);
     if (e.code === 'Space') e.preventDefault();
@@ -759,14 +930,15 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
 
     const surf = surfaceAt(st.x, st.z);
     const type = surf.type;
-    const maxV = type >= 0 ? MAX_SPEED[type] : OFFROAD.max;
-    const grip = type >= 0 ? GRIP[type] : OFFROAD.grip;
+    const spec = model.spec;
+    const maxV = Math.min(spec.cap, type >= 0 ? MAX_SPEED[type] * spec.vmax : OFFROAD.max * spec.off);
+    const grip = (type >= 0 ? GRIP[type] : spec.offGrip ?? OFFROAD.grip) * (spec.grip || 1);
     const rolling = type >= 0 ? 0.25 + (type >= 5 ? 0.6 : 0) : OFFROAD.rolling;
 
     // podélně: plyn, brzda/couvání, odpor, svah
     let v = st.v;
     // rozjezd dvakrát svižnější než dřív (4,2 → 8,4 m/s²)
-    if (gas) v += (v < 0 ? 12 : 8.4 * (1 - Math.max(0, v) / (maxV * 1.15))) * dt;
+    if (gas) v += (v < 0 ? 12 : 8.4 * spec.acc * (1 - Math.max(0, v) / (maxV * 1.15))) * dt;
     if (brake) v -= (v > 0.3 ? 9 : 4.5) * dt;
     if (!brake && v < 0 && !gas) v = Math.min(0, v + (touchOn ? 9 : 3) * dt);
     // telefon: puštěný plyn = auto rychle zabrzdí (ne na místě, ~1 s z 30 km/h)
@@ -775,41 +947,64 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     v -= Math.sign(v) * Math.min(Math.abs(v), (rolling + 0.0016 * v * v) * dt);
     v -= 9.81 * Math.sin(st.pitch) * dt * 0.6;
     if (v > maxV) v -= (v - maxV) * 2 * dt;
-    v = THREE.MathUtils.clamp(v, -8, 50);
+    v = THREE.MathUtils.clamp(v, -8, spec.cap);
     if (!gas && !brake && Math.abs(v) < 0.05) v = 0;
 
     // řízení: menší rejd ve vyšší rychlosti
     const maxSteer = 0.58 / (1 + Math.abs(v) / 11);
     st.steer += (steerIn * maxSteer - st.steer) * Math.min(1, dt * 6);
-    const yawRate = (v * Math.tan(st.steer)) / WHEELBASE * (hand ? 1.25 : grip);
+    const yawRate = (v * Math.tan(st.steer)) / spec.wb * (hand ? 1.25 : grip);
     const newHeading = st.heading - yawRate * dt;
 
     const nx = st.x + Math.cos(newHeading) * v * dt, nz = st.z + Math.sin(newHeading) * v * dt;
     // srážka s budovou: předek / zadek auta
     const dir = Math.sign(v) || 1;
-    const px = nx + Math.cos(newHeading) * 2.1 * dir, pz = nz + Math.sin(newHeading) * 2.1 * dir;
+    const reach = (dir > 0 ? spec.nose : spec.tail) - 0.15;
+    const px = nx + Math.cos(newHeading) * reach * dir, pz = nz + Math.sin(newHeading) * reach * dir;
     const lim = world.W / 2 - 5, limZ = world.H / 2 - 5;
     const hx = Math.cos(newHeading) * dir, hz = Math.sin(newHeading) * dir, spd = Math.abs(v), sk = Math.min(1, spd / 14);
     gtaCool -= dt;
     // vozidla: střed a rohy přídě (nebo zádi při couvání)
+    // proti zaseknutí: blokuje jen náraz, kterým se auto do překážky teprve dostává (když už v ní je,
+    // smí z ní ven), a když se auto se stisknutým plynem/couváním přes sekundu nehne, chvíli překážky ignoruje
+    const cpx = st.x + Math.cos(st.heading) * reach * dir, cpz = st.z + Math.sin(st.heading) * reach * dir;
+    if ((gas || brake) && spd < 0.4) st.stuck = (st.stuck || 0) + dt; else st.stuck = 0;
+    if (st.stuck > 1.0) {
+      st.stuck = 0;
+      // jen když auto opravdu vězí v něčem (jiné auto přes nás, dům), ne když tlačí do zdi zvenku
+      const tr = hooks.traffic?.enabled ? hooks.traffic : null;
+      const back = st.x - Math.cos(st.heading) * reach * dir, backZ = st.z - Math.sin(st.heading) * reach * dir;
+      if (hitsBuilding(st.x, st.z) || tr?.hitAt(st.x, st.z) || tr?.hitAt(cpx, cpz) || tr?.hitAt(back, backZ)
+        || (hitsBuilding(cpx, cpz) && hitsBuilding(back, backZ))) st.ghost = 1.5;
+    }
+    if (st.ghost > 0) st.ghost -= dt;
+    const ghost = st.ghost > 0;
     let veh = null, hitSide = 0;
-    if (hooks.traffic?.enabled) {
+    if (hooks.traffic?.enabled && !ghost) {
       for (const sd of [0, 0.85, -0.85]) {
-        veh = hooks.traffic.hitAt(px - hz * sd, pz + hx * sd);
+        veh = hooks.traffic.hitAt(px - hz * sd * spec.hw / 0.95, pz + hx * sd * spec.hw / 0.95);
         if (veh) { hitSide = sd * dir; break; }
       }
+      if (veh) {
+        for (const sd of [0, 0.85, -0.85]) {
+          if (hooks.traffic.hitAt(cpx - hz * sd * spec.hw / 0.95, cpz + hx * sd * spec.hw / 0.95) === veh) { veh = null; break; }
+        }
+      }
     }
-    const pole = veh ? null : poleHit(st.x, st.z, st.heading, nx, nz, newHeading);
-    if (hitsBuilding(px, pz) || Math.abs(nx) > lim || Math.abs(nz) > limZ) {
+    const pole = veh || ghost ? null : poleHit(st.x, st.z, st.heading, nx, nz, newHeading);
+    const house = !ghost && hitsBuilding(px, pz) && !hitsBuilding(cpx, cpz);
+    if (house || Math.abs(nx) > lim || Math.abs(nz) > limZ) {
       v = -v * 0.25;
-      if (gta && spd > 3 && gtaCool <= 0 && hitsBuilding(px, pz)) {
+      if (gta && spd > 3 && gtaCool <= 0 && house) {
         gtaCool = 0.7; score.houses++; showScore();
         bang('house', sk); debris.add(px, pz, hx, hz, sk); dent(sk, dir > 0 ? 'front' : 'back');
         st.spinV = (Math.random() - 0.5) * 2.4 * sk;
       } else if (Math.abs(st.v) > 4 && !gta) flash('Bum! Pozor na domy');
     } else if (veh) {
-      if (gta && spd > 2.5 && hooks.traffic.wreck(veh, hx, hz, spd)) {
+      const hit = gta && spd > 2 ? hooks.traffic.wreck(veh, hx, hz, spd) : false;
+      if (hit) {
         score.cars++; showScore(); bang('car', sk); dent(sk, dir > 0 ? 'front' : 'back', hitSide);
+        if (hit === 'first') afterWreck(veh);
         v = -v * (0.25 + 0.2 * sk);                   // obě auta od sebe odletí
         st.spinV = (hitSide ? -Math.sign(hitSide) * dir : (Math.random() < 0.5 ? -1 : 1)) * (1 + 2 * Math.random()) * sk;
       } else {
@@ -834,8 +1029,8 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     }
     // GTA: sražení lidé
     if (gta && spd > 1.5 && hooks.life) {
-      const ch0 = Math.cos(st.heading) * 2.2, sh0 = Math.sin(st.heading) * 2.2;
-      const n = hooks.life.knock(st.x - ch0, st.z - sh0, st.x + ch0, st.z + sh0, 1.25, hx, hz, spd);
+      const ch0 = Math.cos(st.heading) * spec.nose, sh0 = Math.sin(st.heading) * spec.nose;
+      const n = hooks.life.knock(st.x - ch0, st.z - sh0, st.x + ch0, st.z + sh0, spec.hw + 0.3, hx, hz, spd);
       if (n) {
         score.people += n; showScore();
         for (let i = 0; i < Math.min(2, n); i++) setTimeout(scream, i * 140);
@@ -863,7 +1058,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     model.body.rotation.x = THREE.MathUtils.clamp(-yawRate * v * 0.006, -0.06, 0.06);
     model.body.rotation.z = THREE.MathUtils.clamp((brake && v > 1 ? -0.025 : 0) + (gas ? 0.012 : 0), -0.04, 0.03);
     for (const w of model.wheels) {
-      w.spin.rotation.z -= (v * dt) / 0.35;
+      w.spin.rotation.z -= (v * dt) / (w.r || 0.35);
       if (w.front) w.pivot.rotation.y = st.steer;
     }
     const night = NIGHT.night.value;
@@ -872,6 +1067,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     model.tail.emissiveIntensity = (brake ? 1.6 : 0.35) + night * 0.8;
 
     placeCamera(false, dt);
+    smoke.update(dt, camera, innerHeight);
     if (botsOn) updateTraffic(dt);
     updateGoal();
     mapT -= dt;

@@ -73,11 +73,11 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
   };
 
   // ---------------------------------------------------------- lidé
-  const NP = coarse ? 55 : 130, NW = coarse ? 14 : 28;
+  const NP = coarse ? 55 : 130, NW = coarse ? 14 : 28, CAP = NP + NW + 16;   // +16 utíkající řidiči (Demolice)
   const parts = personParts();
-  const torso = pool(group, parts.torso, NP + NW, { color: true });
-  const head = pool(group, parts.head, NP + NW);
-  const legs = pool(group, parts.leg, (NP + NW) * 2, { color: true });
+  const torso = pool(group, parts.torso, CAP, { color: true });
+  const head = pool(group, parts.head, CAP);
+  const legs = pool(group, parts.leg, (CAP) * 2, { color: true });
   const walkG = buildGraph(roads, WALK_TYPES);
   const people = [];          // chodci
   const waiting = [];         // čekající na zastávkách
@@ -223,6 +223,18 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, 0.9, sgn * 0.1), lq, ps);
       legs.im.setMatrixAt(i * 2 + k, pm.clone().multiply(lm));
     }
+  }
+  /** Řidič vyskočí z nabouraného auta a utíká pryč (směr fx, fz); po chvíli zmizí. */
+  function addRunner(x, z, fx, fz) {
+    if (waiting.filter((w) => w.run).length >= 16) return;
+    const a = Math.atan2(fz, fx) + (Math.random() - 0.5) * 0.8, sp = 4.5 + Math.random() * 1.5;
+    waiting.push({ stop: null, x, z, yaw: Math.atan2(-Math.sin(a), Math.cos(a)), ph: Math.random() * 6,
+      run: { vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, t: 0, hop: 0 } });
+  }
+  /** Po vypnutí Demolice: pryč se sraženými a utíkajícími. */
+  function clearGta() {
+    for (let k = people.length - 1; k >= 0; k--) if (people[k].down) people.splice(k, 1);
+    for (let k = waiting.length - 1; k >= 0; k--) if (waiting[k].down || waiting[k].run) waiting.splice(k, 1);
   }
   /** Srazit lidi v dosahu úsečky a–b (auto); vrátí počet nově sražených. */
   function knock(ax0, az0, bx, bz, r, hx, hz, speed) {
@@ -523,15 +535,29 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       }
       for (const w of waiting) {
         if (w.ghost) continue;
+        if (i >= CAP) break;
         personColorsOnce(w, i);
         if (w.down) { animDown(w, dt); setPersonDown(i, w.down); i++; continue; }
+        if (w.run) {
+          // vyskočí ven (krátký skok), pak běží, ruce-nohy kmitají
+          const r = w.run;
+          r.t += dt;
+          w.x += r.vx * dt * Math.min(1, r.t * 3); w.z += r.vz * dt * Math.min(1, r.t * 3);
+          const hop = r.t < 0.35 ? Math.sin((r.t / 0.35) * Math.PI) * 0.6 : 0;
+          w.ph += dt * 14;
+          if (r.t > 12) { w.dead = true; continue; }
+          setPerson(i, w.x, heightAt(w.x, w.z) + 0.02 + hop, w.z, w.yaw, Math.sin(w.ph) * 0.75);
+          i++;
+          continue;
+        }
         const y = heightAt(w.x, w.z) + 0.02;
         w.ph += dt;
         setPerson(i, w.x, y, w.z, w.yaw + Math.sin(w.ph * 0.3) * 0.3, 0);
         i++;
       }
       for (let k = people.length - 1; k >= 0; k--) if (people[k].dead) people.splice(k, 1);
-      for (let k = i; k < NP + NW; k++) hidePerson(k);
+      for (let k = waiting.length - 1; k >= 0; k--) if (waiting[k].dead) waiting.splice(k, 1);
+      for (let k = i; k < CAP; k++) hidePerson(k);
       torso.im.instanceMatrix.needsUpdate = head.im.instanceMatrix.needsUpdate = legs.im.instanceMatrix.needsUpdate = true;
       updateCyclists(dt, focus, cam, near, spawn);
     }
@@ -713,7 +739,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
   const peopleMeshes = [torso.im, head.im, legs.im, cBike.im, cFixed.im, cTorso.im, cLeg.im];
   const animalMeshes = [deerBody.im, deerNeck.im, deerLeg.im, hareBody.im, birdBody.im, birdWing.im, buzBody.im, buzWing.im, cowBody.im, cowSpots.im, cowFixed.im, cowHead.im, cowLeg.im];
   return {
-    group, update, knock,
+    group, update, knock, addRunner, clearGta,
     setPeople(v) { showPeople = v; for (const m of peopleMeshes) m.visible = v; if (!v) { people.length = 0; waiting.length = 0; cyclists.length = 0; } },
     setAnimals(v) { showAnimals = v; for (const m of animalMeshes) m.visible = v; if (!v) { deer.length = 0; hares.length = 0; flocks.length = 0; buzzards.length = 0; } },
     get active() { return showPeople || showAnimals; },
