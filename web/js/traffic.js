@@ -578,6 +578,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
   }
 
   function step(v, dt) {
+    if (v.wreck) { v.v = 0; v.braking = true; return; }        // nabourané stojí
     let want = vlimit(v);
     const tr = v.track;
     // zatáčky před vozidlem
@@ -635,6 +636,16 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
 
   function place(v) {
     const tr = v.track;
+    if (v.wreck?.b) {
+      const w = v.wreck, m = deform(w.b, w);
+      v.x = m.elements[12]; v.z = m.elements[14];
+      const l = Math.hypot(m.elements[0], m.elements[2]) || 1;
+      v.dx = m.elements[0] / l; v.dz = m.elements[2] / l;
+      const show = detailAt(v.x, v.z);
+      pool.set(v.kind, v.slot, show ? m : pool.zero);
+      if (v.trailer && w.tm) pool.set(v.trailer.kind, v.trailer.slot, show ? w.tm : pool.zero);
+      return;
+    }
     pose(tr, v.s, v.s - v.m.wb, mat);
     v.x = mat.elements[12]; v.z = mat.elements[14]; v.y = mat.elements[13];
     v.dx = mat.elements[0]; v.dz = mat.elements[2];
@@ -647,7 +658,82 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       pose(tr, hitch, hitch - t.m.wb, mat);
       t.x = mat.elements[12]; t.z = mat.elements[14]; t.dx = v.dx; t.dz = v.dz; t.v = v.v;
       pool.set(t.kind, t.slot, show ? mat : pool.zero);
+      if (v.wreck) v.wreck.tm = mat.clone();
     }
+    if (v.wreck) { v.wreck.b = mat.clone().setPosition(v.x, v.y, v.z); place(v); }
+  }
+
+  // ---------------------------------------------------------- srážky s autem hráče
+  const BIG = new Set(['truck', 'semi', 'trailer', 'bus', 'tractor', 'wagon', 'van']);
+  const base = new THREE.Matrix4(), dq = new THREE.Quaternion(), de = new THREE.Euler(), dsv = new THREE.Vector3(), dm = new THREE.Matrix4();
+  function inBox(o, m, kind, x, z, pad) {
+    const rx = x - o.x, rz = z - o.z;
+    const a = rx * o.dx + rz * o.dz, l = Math.abs(rz * o.dx - rx * o.dz);
+    return a < m.nose + pad && a > -m.tail - pad && l < (BIG.has(kind) ? 1.3 : 1.0) + pad;
+  }
+  /** Vozidlo (jedoucí nebo zaparkované), do kterého patří bod x, z. */
+  function hitAt(x, z, pad = 0.15) {
+    if (!enabled) return null;
+    for (const v of vehicles) {
+      if (Math.abs(v.x - x) > 14 || Math.abs(v.z - z) > 14) continue;
+      if (inBox(v, v.m, v.kind, x, z, pad)) return v;
+      if (v.trailer && v.trailer.x !== undefined && inBox(v.trailer, v.trailer.m, v.trailer.kind, x, z, pad)) return v;
+    }
+    for (const c of parked) {
+      if (c.slot < 0 || Math.abs(c.p[0] - x) > 6 || Math.abs(c.p[1] - z) > 6) continue;
+      c.x = c.p[0]; c.z = c.p[1]; c.dx = c.d[0]; c.dz = c.d[1];
+      if (inBox(c, VEHICLES[c.kind], c.kind, x, z, pad)) return c;
+    }
+    return null;
+  }
+  // zmačkaná karoserie: odhozená ve směru nárazu (během w.e 0 → 1 odletí, poskočí a dotočí se), nižší a kratší
+  const ease = (e) => 1 - (1 - e) ** 3;
+  function deform(m, w) {
+    const e = ease(Math.min(1, w.e));
+    de.set(w.roll * e, w.yaw * e, w.pitch * e);
+    dm.compose(dsv.set(0, 0, 0), dq.setFromEuler(de), new THREE.Vector3(...w.sc));
+    const out = m.clone().multiply(dm);
+    out.elements[12] += w.sx * e; out.elements[14] += w.sz * e;
+    out.elements[13] += Math.sin(Math.PI * Math.min(1, w.e)) * w.hop;
+    return out;
+  }
+  const flying = [];                                   // zaparkovaná auta, která právě letí
+  function animWrecks(dt) {
+    for (const v of vehicles) if (v.wreck && v.wreck.e < 1) v.wreck.e = Math.min(1, v.wreck.e + dt / 0.7);
+    for (let i = flying.length - 1; i >= 0; i--) {
+      const o = flying[i], w = o.wreck;
+      w.e = Math.min(1, w.e + dt / 0.7);
+      w.m = deform(w.b, w);
+      ppool.set(o.kind, o.slot, w.m);
+      if (w.e >= 1) { o.p = [w.m.elements[12], w.m.elements[14]]; o.d = [w.m.elements[0], w.m.elements[2]]; flying.splice(i, 1); }
+    }
+  }
+  function darken(p, slot) {
+    const c = new THREE.Color();
+    for (const im of p.meshes) {
+      if (!im.instanceColor) continue;
+      im.getColorAt(slot, c); im.setColorAt(slot, c.multiplyScalar(0.72)); im.instanceColor.needsUpdate = true;
+    }
+  }
+  /** Nabourat vozidlo (režim GTA); false, když už nabourané je. */
+  function wreck(o, hx, hz, speed) {
+    if (o.wreck) return false;
+    const k = Math.min(1, speed / 14), push = Math.min(6, 1 + speed * 0.32), side = Math.random() < 0.5 ? -1 : 1;
+    o.wreck = { sx: hx * push, sz: hz * push, yaw: side * (0.4 + Math.random() * 0.9) * k, roll: (Math.random() - 0.5) * 0.25 * k,
+      pitch: (Math.random() - 0.5) * 0.14 * k, sc: [0.86 - 0.08 * k * Math.random(), 0.8 - 0.1 * k, 0.94 + 0.1 * k],
+      hop: 0.25 + 0.6 * k, e: 0, b: null, m: null };
+    if (o.p) {                                         // zaparkované
+      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-o.d[1], o.d[0]));
+      o.wreck.b = base.compose(new THREE.Vector3(o.p[0], world.heightAt(o.p[0], o.p[1]) + 0.04, o.p[1]), q, new THREE.Vector3(1, 1, 1)).clone();
+      o.wreck.m = deform(o.wreck.b, o.wreck);
+      flying.push(o);
+      darken(ppool.pools[o.kind], o.slot);
+    } else {
+      o.v = 0;
+      darken(pool.pools[o.kind], o.slot);
+      if (o.trailer) darken(pool.pools[o.trailer.kind], o.trailer.slot);
+    }
+    return true;
   }
 
   // ---------------------------------------------------------- linky autobusů
@@ -1071,6 +1157,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up3 = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
     for (const c of parked) {
       if (c.slot < 0) continue;
+      if (c.wreck) { ppool.set(c.kind, c.slot, c.wreck.m); continue; }
       q.setFromAxisAngle(up3, Math.atan2(-c.d[1], c.d[0]));
       m.compose(pos.set(c.p[0], world.heightAt(c.p[0], c.p[1]) + 0.04, c.p[1]), q, one);
       ppool.set(c.kind, c.slot, m);
@@ -1120,6 +1207,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       place(v);
     }
     updateTrains(dt);
+    animWrecks(dt);
+    ppool.flush();
     // světla: ve dne tlumená, v noci svítí
     const night = NIGHT.night.value;
     pool.mats.lamp.color.setScalar(0.75 + 0.25 * night);          // světla svítí i ve dne, v noci naplno
@@ -1140,7 +1229,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     }
   }
   return {
-    group, update, setEnabled, refreshStops, refreshParked, get enabled() { return enabled; },
+    group, update, setEnabled, refreshStops, refreshParked, hitAt, wreck, get enabled() { return enabled; },
     debug: { vehicles, trains, lines, buses, railStopS, G, parked },
   };
 }

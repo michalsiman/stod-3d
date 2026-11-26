@@ -114,7 +114,7 @@ export function createPosts({ roads, buildings, bridges, world }) {
   }
 
   const q = new THREE.Quaternion(), m = new THREE.Matrix4(), one = new THREE.Vector3(1, 1, 1), v = new THREE.Vector3();
-  return function build(tile, group) {
+  const build = function build(tile, group) {
     const list = perTile.get(`${tile.i}_${tile.j}`);
     if (!list) return;
     const body = new THREE.InstancedMesh(bodyGeo, bodyMat, list.length);
@@ -130,4 +130,6 @@ export function createPosts({ roads, buildings, bridges, world }) {
     refl.computeBoundingSphere();
     group.add(body, refl);
   };
+  build.points = [...perTile.values()].flat();          // kvůli srážkám autem
+  return build;
 }

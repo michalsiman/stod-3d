@@ -158,7 +158,8 @@ world.builders.push(createLamps({ lamps, world }));
 const lit = [...FLOODLIT, ...stadiumLights(stadiumPitch(sport))];   // nasvícený kostel, stadion
 world.builders.push(createNightGlow({ lamps, buildings, world, spots: lit }));
 scene.add(createFarLights({ lamps, buildings, world, spots: lit }));       // světla města z dálky / z výšky
-world.builders.push(createPosts({ roads, buildings, bridges: bridgeInfo, world }));
+const postsBuild = createPosts({ roads, buildings, bridges: bridgeInfo, world });
+world.builders.push(postsBuild);
 scene.add(createBuildings({ buildings, world, skip: landmarks.skip }));
 signLayer = createSigns({ signs, buildings, roads, world });
 signLayer.update();
@@ -198,11 +199,19 @@ let mode = 'orbit';
 const drive = createDrive({
   roads, bridges: bridgeInfo, buildings, streets: poiData?.streets, pois: poiData?.pois, world, scene, camera,
   onExit: () => setMode('orbit'),
+  onGta: (on) => document.getElementById('gta-mode').classList.toggle('active', on),
+  // pevné sloupy: lampy, sloupy elektrického vedení, patníky
+  obstacles: [
+    ...lamps.map((l) => [l[0], l[1], 0.2]),
+    ...power.flat().map((p) => [p[0], p[1], 0.3]),
+    ...postsBuild.points.map((p) => [p[0], p[1], 0.08]),
+  ],
 });
 
 // živá mapa: doprava, lidé, zvířata (přepínače si pamatují volbu)
 const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking: [...parking, ...SQUARE_PARKING], coarse: isCoarse, drive });
 const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, bike, sidewalks, coarse: isCoarse });
+Object.assign(drive.hooks, { traffic, life });
 world.builders.push(() => traffic.refreshStops());
 world.builders.push(() => traffic.refreshParked());
 {
@@ -378,6 +387,11 @@ function setMode(next) {
 }
 
 document.querySelectorAll('#modes [data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+// Demolice: projížďka autem s nárazy naostro (opakované klepnutí ji vypne, auto jede dál)
+function startGta() { setMode('drive'); drive.setGta(true); }
+document.getElementById('gta-mode').addEventListener('click', () => {
+  if (mode === 'drive' && drive.gta) drive.setGta(false); else startGta();
+});
 document.body.dataset.mode = mode;
 // sbalení menu (na mobilu ve výchozím stavu sbalené)
 {
@@ -426,7 +440,7 @@ function updateFree(dt) {
   const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
   const speed = walk ? (fast ? 9 : 3) : (fast ? 220 : 50);
   const ground = () => world.heightAt(camera.position.x, camera.position.z);
-  if (!walk && flyAgl === null) flyAgl = Math.max(5, camera.position.y - ground());
+  if (!walk && flyAgl === null) flyAgl = 80;                 // let začíná 80 m nad terénem
   camera.getWorldDirection(fwd);
   fwd.y = 0;
   if (fwd.lengthSq() < 1e-6) { const e = camera.matrixWorld.elements; fwd.set(e[4], 0, e[6]); }   // pohled kolmo dolů: dopředu = horní okraj obrazu
@@ -709,3 +723,21 @@ createTimeControls({ onChange: (pos) => { sunPos = pos; applyLight(); } });
 }
 applyShadows();
 document.getElementById('loader').classList.add('done');
+// reklama na Demolici po načtení (dá se vypnout „Už nezobrazovat“)
+{
+  const ad = document.getElementById('gta-ad');
+  let off = false;
+  try { off = localStorage.getItem('stod3d.gtaAd') === '0'; } catch { /* bez úložiště */ }
+  if (ad && !off && !new URLSearchParams(location.search).has('mark')) {
+    const close = () => {
+      ad.hidden = true;
+      if (ad.querySelector('.ga-never input').checked) { try { localStorage.setItem('stod3d.gtaAd', '0'); } catch { /* bez úložiště */ } }
+    };
+    ad.querySelector('.ga-x').onclick = close;
+    ad.querySelector('.ga-no').onclick = close;
+    ad.addEventListener('click', (e) => { if (e.target === ad) close(); });
+    addEventListener('keydown', (e) => { if (e.code === 'Escape' && !ad.hidden) close(); });
+    ad.querySelector('.ga-go').onclick = () => { close(); document.getElementById('night-tip').hidden = true; startGta(); };
+    setTimeout(() => { if (mode === 'orbit') ad.hidden = false; }, 1500);
+  }
+}

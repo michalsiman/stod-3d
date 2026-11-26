@@ -196,6 +196,52 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     if (p.s > 200) { const d = p.tr.trim(p.s - 20); p.s -= d; }
     return true;
   }
+  // sražený chodec (režim GTA): odletí, otočí se a zůstane ležet trochu „zmačkaný“
+  const tq = new THREE.Quaternion(), dsc = new THREE.Vector3(1.25, 0.85, 1.2);
+  function knockOne(p, x, y, z, yaw, hx, hz, speed) {
+    const k = Math.min(1, speed / 14);
+    p.down = { x, y, z, yaw, tilt: 0, vx: hx * speed * 0.55, vz: hz * speed * 0.55, vy: 2.5 + 5 * k,
+      spin: (Math.random() - 0.5) * 9, roll: Math.random() < 0.5 ? 1 : -1, rest: false };
+  }
+  function animDown(p, dt) {
+    const d = p.down;
+    if (d.rest) return;
+    d.vy -= 9.81 * dt;
+    d.x += d.vx * dt; d.z += d.vz * dt; d.y += d.vy * dt;
+    d.vx *= 1 - dt * 0.6; d.vz *= 1 - dt * 0.6;
+    d.tilt = Math.min(Math.PI / 2, d.tilt + dt * 6);
+    d.yaw += d.spin * dt;
+    const g = heightAt(d.x, d.z) + 0.14;
+    if (d.y <= g && d.vy < 0) { d.y = g; d.rest = true; d.tilt = Math.PI / 2; }
+  }
+  function setPersonDown(i, d) {
+    pq.setFromAxisAngle(up, d.yaw).multiply(tq.setFromAxisAngle(ax, d.tilt * d.roll));
+    pm.compose(pp.set(d.x, d.y, d.z), pq, dsc);
+    torso.im.setMatrixAt(i, pm); head.im.setMatrixAt(i, pm);
+    for (const [k, sgn] of [[0, 1], [1, -1]]) {
+      const lq = new THREE.Quaternion().setFromAxisAngle(ax, 0.5 * sgn);
+      const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, 0.9, sgn * 0.1), lq, ps);
+      legs.im.setMatrixAt(i * 2 + k, pm.clone().multiply(lm));
+    }
+  }
+  /** Srazit lidi v dosahu úsečky a–b (auto); vrátí počet nově sražených. */
+  function knock(ax0, az0, bx, bz, r, hx, hz, speed) {
+    const dx = bx - ax0, dz = bz - az0, l2 = dx * dx + dz * dz || 1;
+    const near = (x, z) => {
+      const t = Math.max(0, Math.min(1, ((x - ax0) * dx + (z - az0) * dz) / l2));
+      return Math.hypot(ax0 + dx * t - x, az0 + dz * t - z) < r;
+    };
+    let n = 0;
+    for (const p of people) {
+      if (p.down || p.y === undefined || !near(p.x, p.z)) continue;
+      knockOne(p, p.x, p.y, p.z, p.yaw || 0, hx, hz, speed); n++;
+    }
+    for (const w of waiting) {
+      if (w.ghost || w.down || !near(w.x, w.z)) continue;
+      knockOne(w, w.x, heightAt(w.x, w.z), w.z, w.yaw, hx, hz, speed); n++;
+    }
+    return n;
+  }
   function setPerson(i, x, y, z, yaw, swing) {
     pq.setFromAxisAngle(up, yaw);
     pm.compose(pp.set(x, y, z), pq, ps);
@@ -448,6 +494,14 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       }
       let i = 0;
       for (const p of people) {
+        if (p.down) {
+          animDown(p, dt);
+          p.x = p.down.x; p.z = p.down.z;
+          personColorsOnce(p, i);
+          if (detailAt(p.x, p.z)) setPersonDown(i, p.down); else hidePerson(i);
+          i++;
+          continue;
+        }
         if (p.pause > 0) p.pause -= dt;
         else {
           p.s += p.v * dt;
@@ -458,8 +512,9 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
         const x = P[0], z = P[1];
         const br = bridges.at(x, z, 2, P[3], P[4]);
         const y = br !== null ? br + 0.5 : heightAt(x, z) + (P[2] <= 3 ? SIDEWALK_TOP : P[2] <= 6 ? 0.33 : 0.3);
-        p.x = x; p.z = z;
+        p.x = x; p.z = z; p.y = y;
         const yaw = Math.atan2(-P[4], P[3]);
+        p.yaw = yaw;
         p.phase += dt * p.v * 5.2 * (p.pause > 0 ? 0 : 1);
         const swing = p.pause > 0 ? 0 : Math.sin(p.phase) * 0.42;
         personColorsOnce(p, i);
@@ -469,6 +524,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       for (const w of waiting) {
         if (w.ghost) continue;
         personColorsOnce(w, i);
+        if (w.down) { animDown(w, dt); setPersonDown(i, w.down); i++; continue; }
         const y = heightAt(w.x, w.z) + 0.02;
         w.ph += dt;
         setPerson(i, w.x, y, w.z, w.yaw + Math.sin(w.ph * 0.3) * 0.3, 0);
@@ -657,7 +713,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
   const peopleMeshes = [torso.im, head.im, legs.im, cBike.im, cFixed.im, cTorso.im, cLeg.im];
   const animalMeshes = [deerBody.im, deerNeck.im, deerLeg.im, hareBody.im, birdBody.im, birdWing.im, buzBody.im, buzWing.im, cowBody.im, cowSpots.im, cowFixed.im, cowHead.im, cowLeg.im];
   return {
-    group, update,
+    group, update, knock,
     setPeople(v) { showPeople = v; for (const m of peopleMeshes) m.visible = v; if (!v) { people.length = 0; waiting.length = 0; cyclists.length = 0; } },
     setAnimals(v) { showAnimals = v; for (const m of animalMeshes) m.visible = v; if (!v) { deer.length = 0; hares.length = 0; flocks.length = 0; buzzards.length = 0; } },
     get active() { return showPeople || showAnimals; },

@@ -174,7 +174,39 @@
     <button data-mode="fly" title="Volný let (F)">Let</button>
     <button data-mode="walk" title="Chůze (G)">Chůze</button>
     <button data-mode="drive" title="Projížďka autem (V)">🚗 Auto</button>
+    <button id="gta-mode" title="Demolice – bourací jízda autem, jen pro legraci">💥 Demolice</button>
   </nav>
+
+  <div id="gta-ad" hidden>
+    <div class="ga-card panel" role="dialog" aria-modal="true" aria-labelledby="ga-title">
+      <span class="ga-ribbon">REKLAMA</span>
+      <button class="ga-x" title="Zavřít" aria-label="Zavřít">✕</button>
+      <svg class="ga-scene" viewBox="0 0 320 150" aria-hidden="true">
+        <rect width="320" height="150" fill="#7fb2e0"/><rect y="100" width="320" height="16" fill="#6f9a4f"/>
+        <circle cx="40" cy="30" r="13" fill="#fff3b0"/>
+        <g class="ga-house"><rect x="236" y="40" width="70" height="76" fill="#d8cdb4"/><polygon points="230,42 271,14 312,42" fill="#a3402c"/>
+          <rect x="248" y="56" width="16" height="16" fill="#ffd77a"/><rect x="278" y="56" width="16" height="16" fill="#ffd77a"/><rect x="262" y="88" width="16" height="28" fill="#6b4a30"/></g>
+        <rect y="114" width="320" height="36" fill="#3b3d42"/>
+        <path d="M0 132 H320" stroke="#e8e4da" stroke-width="2" stroke-dasharray="14 10"/>
+        <g class="ga-bricks"><rect x="226" y="100" width="8" height="5" fill="#b0533c"/><rect x="232" y="94" width="7" height="5" fill="#c9c0ae"/><rect x="224" y="108" width="9" height="5" fill="#9a4632"/></g>
+        <g class="ga-parked"><rect x="168" y="96" width="52" height="16" rx="4" fill="#2f6fd0"/><path d="M178 96 L184 84 H204 L212 96 Z" fill="#2f6fd0"/>
+          <path d="M186 95 L189 87 H202 L207 95 Z" fill="#bfe3ff"/><circle cx="180" cy="114" r="6" fill="#151515"/><circle cx="208" cy="114" r="6" fill="#151515"/></g>
+        <g class="ga-man"><circle cx="132" cy="80" r="5" fill="#f0c9a0"/><rect x="128" y="85" width="8" height="15" rx="2" fill="#e23b3b"/>
+          <path d="M129 100 L127 114 M135 100 L137 114" stroke="#2a3446" stroke-width="3"/></g>
+        <g class="ga-car"><rect x="0" y="96" width="56" height="16" rx="4" fill="#d12f2f"/><path d="M10 96 L18 83 H38 L48 96 Z" fill="#d12f2f"/>
+          <path d="M20 95 L23 86 H37 L43 95 Z" fill="#bfe3ff"/><circle cx="12" cy="114" r="6" fill="#151515"/><circle cx="44" cy="114" r="6" fill="#151515"/>
+          <rect x="53" y="99" width="4" height="4" fill="#fff6c0"/></g>
+        <g class="ga-aaa"><rect x="96" y="44" width="46" height="18" rx="9" fill="#fff"/><text x="119" y="57" text-anchor="middle" font-size="11" font-weight="700" fill="#111">AÁÁ!</text></g>
+        <g class="ga-bum"><polygon points="176,58 186,72 202,60 198,78 216,82 198,90 206,106 188,96 178,112 172,94 154,100 164,84 148,74 168,72" fill="#ffd23f" stroke="#e0471f" stroke-width="3"/>
+          <text x="182" y="90" text-anchor="middle" font-size="15" font-weight="900" fill="#c2321e">BUM!</text></g>
+      </svg>
+      <h2 id="ga-title">💥 NOVINKA: Demolice ve Stodě</h2>
+      <p>Falešné GTA pro celou rodinu. Vezmi auto, smetni lampu, zmačkej plechovku souseda a prorazni zeď hospody. Skóre se počítá, pojišťovna o ničem neví. 😇</p>
+      <p class="ga-small">Jen ve virtuálním Stodě! Ve skutečnosti jezdi opatrně a lidi nech na pokoji.</p>
+      <div class="ga-btns"><button class="ga-go">🚗💥 Jdu bourat!</button><button class="ga-no">Teď ne</button></div>
+      <label class="ga-never"><input type="checkbox"> Už nezobrazovat</label>
+    </div>
+  </div>
 
   <button id="help-toggle" class="panel" title="Ovládání mapy" aria-expanded="false" aria-controls="help">?</button>
   <aside class="panel" id="help" hidden>

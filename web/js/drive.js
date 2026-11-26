@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NIGHT } from './night.js';
+import { bang, scream, createDebris } from './gta.js';
 
 // Projížďka autem: arkádová jízda po silnicích a cestách Stodska.
 //   Rychlost podle povrchu (silnice, ulice, štěrk, polní cesta, mimo cestu), náklon auta podle terénu,
@@ -263,11 +264,37 @@ function createEngineSound() {
 }
 
 // ---------------------------------------------------------------- jízda
-export function createDrive({ roads, bridges, buildings, streets, pois, world, scene, camera, onExit }) {
+export function createDrive({ roads, bridges, buildings, streets, pois, world, scene, camera, onExit, onGta, obstacles = [] }) {
   const lines = roads.map((r) => ({ t: r.t, w: WIDTH[r.t], p: r.p }));
   const roadGrid = segIndex(lines);
   const streetGrid = segIndex((streets || []).flatMap((s) => s.paths.map((p) => ({ name: s.name, p, w: 10 }))));
   const hitsBuilding = buildingIndex(buildings);
+  // sloupy (lampy, elektrické vedení, patníky): [x, z, poloměr] v mřížce 20 m
+  const poleGrid = new Map();
+  for (const o of obstacles) {
+    const k = `${Math.floor(o[0] / 20)},${Math.floor(o[1] / 20)}`;
+    let a = poleGrid.get(k); if (!a) poleGrid.set(k, a = []); a.push(o);
+  }
+  const segD = (px, pz, ax, az, bx, bz) => {
+    const dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1)));
+    return Math.hypot(ax + dx * t - px, az + dz * t - pz);
+  };
+  /** Sloup, do kterého auto (úsečka ±2 m podél osy, poloviční šířka 0,95 m) vjede při posunu z (x0,z0,h0) na (x1,z1,h1). */
+  function poleHit(x0, z0, h0, x1, z1, h1) {
+    const c1 = Math.cos(h1) * 2, s1 = Math.sin(h1) * 2, c0 = Math.cos(h0) * 2, s0 = Math.sin(h0) * 2;
+    const cx = Math.floor(x1 / 20), cz = Math.floor(z1 / 20);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      for (const o of poleGrid.get(`${cx + a},${cz + b}`) || []) {
+        const d1 = segD(o[0], o[1], x1 - c1, z1 - s1, x1 + c1, z1 + s1);
+        if (d1 > o[2] + 0.95) continue;
+        if (d1 < segD(o[0], o[1], x0 - c0, z0 - s0, x0 + c0, z0 + s0) - 1e-4) return o;
+      }
+    }
+    return null;
+  }
+  // napojí main.js (doprava a lidé vznikají až po autě)
+  const hooks = { traffic: null, life: null };
+  const debris = createDebris(scene, world);
 
   let paintIdx = 0;
   try { paintIdx = +(localStorage.getItem('stod3d.paint') || 0) % PAINTS.length; } catch { /* ignorovat */ }
@@ -297,6 +324,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
       <button data-act="view" title="Pohled (C)">🎥</button>
       <button data-act="paint" title="Barva auta (P)">🎨</button>
       <button data-act="sound" title="Zvuk (M)">🔊</button>
+      <button data-act="gta" title="Demolice – nárazy naostro, jen pro legraci (G)">💥</button>
       <button data-act="exit" title="Vystoupit (Esc / O)">✕</button>
     </div>
     <div class="dh-help">↑/W plyn · ↓/S brzda a couvání · ←/→ zatáčení · mezerník ruční brzda · C pohled</div>`;
@@ -304,7 +332,10 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   // mapka a cíl mimo HUD (ten má transform, uvnitř by „fixed“ neplatilo k oknu)
   const mapEl = hud.querySelector('.dh-map'), goalEl = hud.querySelector('.dh-goal');
   mapEl.hidden = true;
-  document.body.append(mapEl, goalEl);
+  const scoreEl = document.createElement('div');
+  scoreEl.className = 'dh-score';
+  scoreEl.hidden = true;
+  document.body.append(mapEl, goalEl, scoreEl);
   const touch = document.createElement('div');
   touch.id = 'drive-touch';
   touch.hidden = true;
@@ -404,6 +435,64 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     try { localStorage.setItem('stod3d.paint', String(paintIdx)); } catch { /* ignorovat */ }
   }
   function toggleSound() { soundBtn.textContent = sound.toggle() ? '🔊' : '🔇'; }
+
+  // ---------------------------------------------------------------- režim GTA
+  // nárazy do lidí, aut a domů naostro: rána nebo výkřik, sražení lidé zůstanou ležet, auta zmačkaná,
+  // u domů díra a trosky, vlastní auto se postupně mačká; počítá se skóre
+  const gtaBtn = hud.querySelector('[data-act=gta]');
+  let gta = false, gtaCool = 0;
+  const score = { people: 0, cars: 0, houses: 0, poles: 0 };
+  function showScore() {
+    const n = score.people + score.cars + score.houses + score.poles;
+    scoreEl.innerHTML = `<b>💥 ${n}</b> <span>nárazů</span> · 🚶 ${score.people} · 🚗 ${score.cars} · 🏠 ${score.houses} · 🚦 ${score.poles}`;
+  }
+  function setGta(on) {
+    if (gta === on) return;
+    gta = on;
+    gtaBtn.classList.toggle('on', on);
+    scoreEl.hidden = !on || !st.active;
+    if (on) { Object.keys(score).forEach((k) => { score[k] = 0; }); showScore(); flash('Demolice zapnuta – jen pro legraci!'); }
+    else { model.body.scale.set(1, 1, 1); model.body.rotation.y = 0; repair(); flash('Demolice vypnuta'); }
+    onGta?.(on);
+  }
+  gtaBtn.onclick = () => setGta(!gta);
+  // vlastní auto se mačká: body karoserie u místa nárazu se promáčknou dovnitř (s „vlnkami“ plechu),
+  // každá rána přidá další; po vypnutí Demolice je auto zase celé
+  const orig = new Map();
+  let dents = 0;
+  const hash = (x, y, z, sd) => { const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + sd) * 43758.5453; return h - Math.floor(h); };
+  function crumple(lx, ly, lz, nx, nz, depth, R) {
+    const sd = Math.random() * 100;
+    for (const m of model.body.children) {
+      if (!m.isMesh) continue;
+      const pa = m.geometry.attributes.position, a = pa.array;
+      if (!orig.has(m)) orig.set(m, a.slice());
+      let moved = false;
+      for (let i = 0; i < a.length; i += 3) {
+        const x = a[i], y = a[i + 1], z = a[i + 2];
+        const d = Math.hypot(x - lx, (y - ly) * 1.3, z - lz);
+        if (d > R) continue;
+        const f = (1 - d / R) ** 1.6 * depth * (0.45 + hash(Math.round(x * 20), Math.round(y * 20), Math.round(z * 20), sd));
+        a[i] += nx * f; a[i + 2] += nz * f; a[i + 1] -= f * 0.3;
+        moved = true;
+      }
+      if (moved) { pa.needsUpdate = true; m.geometry.computeVertexNormals(); }
+    }
+  }
+  function dent(k, where = 'front', lat = 0) {
+    if (dents++ > 60) return;
+    const b = model.body;
+    b.scale.y = Math.max(0.92, b.scale.y - 0.004 * k);
+    b.rotation.y = THREE.MathUtils.clamp(b.rotation.y + (Math.random() - 0.5) * 0.02 * k, -0.05, 0.05);
+    const depth = 0.1 + 0.28 * k, R = 0.6 + 0.6 * k, z = THREE.MathUtils.clamp(lat + (Math.random() - 0.5) * 0.8, -0.85, 0.85);
+    if (where === 'back') crumple(-2.25, 0.55 + Math.random() * 0.4, z, 1, -z * 0.2, depth, R);
+    else crumple(2.25, 0.55 + Math.random() * 0.4, z, -1, -z * 0.2, depth, R);
+    if (k > 0.6 && Math.random() < 0.5) crumple(0.3 * (Math.random() - 0.5), 1.5, z * 0.5, 0, 0, 0.12 * k, 1.1);   // promáčklá střecha
+  }
+  function repair() {
+    for (const [m, a] of orig) { m.geometry.attributes.position.array.set(a); m.geometry.attributes.position.needsUpdate = true; m.geometry.computeVertexNormals(); }
+    orig.clear(); dents = 0;
+  }
   let flashT = 0;
   function flash(text) { $('.dh-surface').textContent = text; flashT = 1.5; }
 
@@ -609,6 +698,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     model.car.visible = true;
     hud.hidden = false;
     mapEl.hidden = false;
+    scoreEl.hidden = !gta;
     goalEl.hidden = !goal && !reached;
     touch.hidden = !matchMedia('(pointer: coarse)').matches;
     placeCamera(true);
@@ -621,6 +711,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     hideTraffic();
     hud.hidden = true;
     mapEl.hidden = true;
+    scoreEl.hidden = true;
     goalEl.hidden = true;
     touch.hidden = true;
     touchKeys.clear();
@@ -651,6 +742,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     if (e.code === 'KeyT') newGoal();
     if (e.code === 'KeyP') repaint();
     if (e.code === 'KeyM') toggleSound();
+    if (e.code === 'KeyG') setGta(!gta);
     if (e.code === 'Space') e.preventDefault();
   });
 
@@ -697,15 +789,61 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     const dir = Math.sign(v) || 1;
     const px = nx + Math.cos(newHeading) * 2.1 * dir, pz = nz + Math.sin(newHeading) * 2.1 * dir;
     const lim = world.W / 2 - 5, limZ = world.H / 2 - 5;
+    const hx = Math.cos(newHeading) * dir, hz = Math.sin(newHeading) * dir, spd = Math.abs(v), sk = Math.min(1, spd / 14);
+    gtaCool -= dt;
+    // vozidla: střed a rohy přídě (nebo zádi při couvání)
+    let veh = null, hitSide = 0;
+    if (hooks.traffic?.enabled) {
+      for (const sd of [0, 0.85, -0.85]) {
+        veh = hooks.traffic.hitAt(px - hz * sd, pz + hx * sd);
+        if (veh) { hitSide = sd * dir; break; }
+      }
+    }
+    const pole = veh ? null : poleHit(st.x, st.z, st.heading, nx, nz, newHeading);
     if (hitsBuilding(px, pz) || Math.abs(nx) > lim || Math.abs(nz) > limZ) {
       v = -v * 0.25;
-      if (Math.abs(st.v) > 4) flash('Bum! Pozor na domy');
+      if (gta && spd > 3 && gtaCool <= 0 && hitsBuilding(px, pz)) {
+        gtaCool = 0.7; score.houses++; showScore();
+        bang('house', sk); debris.add(px, pz, hx, hz, sk); dent(sk, dir > 0 ? 'front' : 'back');
+        st.spinV = (Math.random() - 0.5) * 2.4 * sk;
+      } else if (Math.abs(st.v) > 4 && !gta) flash('Bum! Pozor na domy');
+    } else if (veh) {
+      if (gta && spd > 2.5 && hooks.traffic.wreck(veh, hx, hz, spd)) {
+        score.cars++; showScore(); bang('car', sk); dent(sk, dir > 0 ? 'front' : 'back', hitSide);
+        v = -v * (0.25 + 0.2 * sk);                   // obě auta od sebe odletí
+        st.spinV = (hitSide ? -Math.sign(hitSide) * dir : (Math.random() < 0.5 ? -1 : 1)) * (1 + 2 * Math.random()) * sk;
+      } else {
+        v = -v * 0.25;
+        if (spd > 2) { if (gta) { if (gtaCool <= 0) { bang('car', sk * 0.5); gtaCool = 0.5; } } else flash('Ťuk! Pozor na ostatní auta'); }
+      }
+    } else if (pole) {
+      v = -v * 0.25;
+      if (gta && spd > 3 && gtaCool <= 0) { gtaCool = 0.6; score.poles++; showScore(); bang('pole', sk); dent(sk * 0.7, dir > 0 ? 'front' : 'back'); }
+      else if (spd > 3 && !gta) flash('Bum! Pozor na sloup');
     } else {
       st.x = nx; st.z = nz;
       st.odo += Math.abs(v * dt);
     }
     st.heading = newHeading;
     st.v = v;
+    // po nárazu se auto ještě chvíli otáčí (smyk)
+    if (st.spinV) {
+      st.heading += st.spinV * dt;
+      st.spinV *= Math.max(0, 1 - dt * 2.2);
+      if (Math.abs(st.spinV) < 0.02) st.spinV = 0;
+    }
+    // GTA: sražení lidé
+    if (gta && spd > 1.5 && hooks.life) {
+      const ch0 = Math.cos(st.heading) * 2.2, sh0 = Math.sin(st.heading) * 2.2;
+      const n = hooks.life.knock(st.x - ch0, st.z - sh0, st.x + ch0, st.z + sh0, 1.25, hx, hz, spd);
+      if (n) {
+        score.people += n; showScore();
+        for (let i = 0; i < Math.min(2, n); i++) setTimeout(scream, i * 140);
+        bang('pole', 0.15);
+        st.v *= 0.9;
+        dent(0.25, dir > 0 ? 'front' : 'back');
+      }
+    }
 
     // výška, náklon podle terénu pod koly
     const ch = Math.cos(st.heading), sh = Math.sin(st.heading);
@@ -758,5 +896,5 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     return true;
   }
 
-  return { start, stop, update, setBots, get active() { return st.active; }, state: st, bots };
+  return { start, stop, update, setBots, hooks, setGta, debugDent: (k, w) => dent(k, w), get active() { return st.active; }, get gta() { return gta; }, state: st, bots };
 }
