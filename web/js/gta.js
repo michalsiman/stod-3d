@@ -177,3 +177,38 @@ export function createSmoke(scene) {
     clear() { sources.length = 0; age.fill(99); alpha.fill(0); g.attributes.alpha.needsUpdate = true; },
   };
 }
+
+/** Sirény: policie „kvílí“ (plynulé houkání nahoru a dolů), sanitka střídá dva tóny. Hlasitost podle vzdálenosti. */
+export function createSirens() {
+  const voices = new Map();
+  function drop(v, s) { try { s.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05); s.osc.stop(ctx.currentTime + 0.3); } catch { /* už stojí */ } voices.delete(v); }
+  return {
+    update(list, pos, on) {
+      if (!on || !list.length) { for (const [v, s] of voices) drop(v, s); return; }
+      const c = audio();
+      if (!c) return;
+      const t = c.currentTime;
+      for (const v of list) {
+        let s = voices.get(v);
+        if (!s) {
+          const osc = c.createOscillator(); osc.type = 'sawtooth';
+          const filt = c.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 2400;
+          const gain = c.createGain(); gain.gain.value = 0;
+          osc.connect(filt).connect(gain).connect(c.destination);
+          osc.start();
+          s = { osc, gain, ph: Math.random() * 3 };
+          voices.set(v, s);
+        }
+        const tt = t + s.ph;
+        const f = v.em.type === 'police' ? 820 + 480 * Math.sin((tt * Math.PI * 2) / 2.6)
+          : (tt % 1.2 < 0.6 ? 960 : 760);
+        s.osc.frequency.setTargetAtTime(f, t, v.em.type === 'police' ? 0.03 : 0.004);
+        const d = Math.hypot(v.x - pos.x, v.z - pos.z);
+        const g = 0.13 * Math.max(0, 1 - d / 650) ** 2;
+        s.gain.gain.setTargetAtTime(g, t, 0.1);
+      }
+      for (const [v, s] of voices) if (!list.includes(v)) drop(v, s);
+    },
+    clear() { for (const [v, s] of voices) drop(v, s); },
+  };
+}

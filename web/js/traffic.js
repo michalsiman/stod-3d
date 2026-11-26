@@ -504,8 +504,26 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     vehicles.push(v);
     return v;
   }
+  /** Otočit vozidlo na místě a poslat ho zpět, odkud přijelo (pak dál náhodně jinam). */
+  function turnAround(v) {
+    const tr = v.track, i = tr.seg(v.s);
+    if (i + 1 >= tr.n) return false;
+    const [ax, az] = tr.P[i], [bx, bz] = tr.P[i + 1];
+    const L = Math.hypot(bx - ax, bz - az) || 1, t = THREE.MathUtils.clamp((v.s - tr.cum[i]) / L, 0, 1);
+    const cx = ax + (bx - ax) * t, cz = az + (bz - az) * t, ux = (bx - ax) / L, uz = (bz - az) / L;
+    const back = G.nearest(ax, az, () => true, 1), ahead = G.nearest(bx, bz, () => true, 1);
+    if (back < 0 || ahead < 0 || back === ahead || Math.hypot(G.X[back] - cx, G.Z[back] - cz) < 2) return false;
+    const ty = tr.t[i], lead = 15;
+    const nt = new Track();
+    nt.push(cx + ux * lead, cz + uz * lead, laneOffset(ty), ty);          // kus „před“ autem, ať má kde stát přívěs
+    nt.push(cx, cz, laneOffset(ty), ty);
+    nt.push(G.X[back], G.Z[back], laneOffset(ty), ty);
+    Object.assign(v, { track: nt, s: lead, prev: ahead, node: back, jam: 0, wait: 0, roam: true, main: false });
+    return extend(v);
+  }
   function removeVehicle(v) {
     v.gone = true;
+    if (v.em) group.remove(v.em.bar);
     pool.release(v.kind, v.slot);
     if (v.trailer) pool.release(v.trailer.kind, v.trailer.slot);
     vehicles.splice(vehicles.indexOf(v), 1);
@@ -628,6 +646,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       }
     }
     if (yieldTo) { want = Math.min(want, 0); v.wait += dt; } else v.wait = Math.max(0, v.wait - dt * 0.5);
+    // zácpa (např. za nabouraným autem): stojí a nemůže dál → po chvíli se otočí a odjede jinam
+    if (v.v < 0.3 && want < 0.6 && !(v.stopT > 0)) v.jam = (v.jam || 0) + dt; else v.jam = 0;
     if (v.wait > 7) v.wait = 0;
     const acc = want > v.v ? (v.kind === 'car' || v.kind === 'hatch' || v.kind === 'combi' || v.kind === 'suv' ? 2.4 : 1.2) : -7;
     v.v = Math.max(0, v.v + THREE.MathUtils.clamp(want - v.v, -7 * dt, Math.abs(acc) * dt));
@@ -645,6 +665,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
       const show = detailAt(v.x, v.z);
       pool.set(v.kind, v.slot, show ? m : pool.zero);
       if (v.trailer && w.tm) pool.set(v.trailer.kind, v.trailer.slot, show ? w.tm : pool.zero);
+      if (v.em) { v.em.bar.matrix.copy(m); v.em.bar.matrixWorldNeedsUpdate = true; v.em.bar.visible = show; }
       return;
     }
     pose(tr, v.s, v.s - v.m.wb, mat);
@@ -653,6 +674,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     const l = Math.hypot(v.dx, v.dz) || 1; v.dx /= l; v.dz /= l;
     const show = detailAt(v.x, v.z);
     pool.set(v.kind, v.slot, show ? mat : pool.zero);
+    if (v.em) { v.em.bar.matrix.copy(mat); v.em.bar.matrixWorldNeedsUpdate = true; v.em.bar.visible = show; }
     if (v.trailer) {
       const t = v.trailer;
       const hitch = v.s - v.m.wb - (v.kind === 'semi' ? -0.25 : 1.6);
@@ -768,6 +790,84 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     }
     return old ? 'again' : 'first';
   }
+
+  // ---------------------------------------------------------- záchranáři (Demolice): policie a sanitky s majáky
+  let emergencyOn = false, emTime = 0;
+  const EMERG = [['police', 'combi'], ['police', 'combi'], ['police', 'combi'], ['ambulance', 'van'], ['ambulance', 'van']];
+  function labelTex(text, bg, fg, checker) {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 32;
+    const g = c.getContext('2d');
+    if (checker) for (let i = 0; i < 32; i++) for (let j = 0; j < 2; j++) { g.fillStyle = (i + j) % 2 ? checker[0] : checker[1]; g.fillRect(i * 8, j * 16, 8, 16); }
+    else { g.fillStyle = bg; g.fillRect(0, 0, 256, 32); }
+    if (text) { g.fillStyle = fg; g.font = 'bold 22px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 17); }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  const emTex = {
+    police: new THREE.MeshLambertMaterial({ map: labelTex('POLICIE', '#1d3f9a', '#ffffff'), side: THREE.DoubleSide }),
+    ambulance: new THREE.MeshLambertMaterial({ map: labelTex('', '', '', ['#1f8f3a', '#f2e21a']), side: THREE.DoubleSide }),
+  };
+  const barDark = new THREE.MeshLambertMaterial({ color: 0x222428 });
+  function makeBar(type, kind) {
+    const bar = new THREE.Group();
+    bar.matrixAutoUpdate = false;
+    const top = kind === 'van' ? 2.32 : 1.47;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.07, 1.0), barDark);
+    base.position.set(kind === 'van' ? 1.2 : -0.3, top, 0); bar.add(base);
+    const lights = [];
+    for (const z of [0.27, -0.27]) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.12, 0.42), new THREE.MeshBasicMaterial({ color: 0x1030ff }));
+      m.position.set(base.position.x, top + 0.09, z); bar.add(m); lights.push(m);
+    }
+    // pruh na bocích (POLICIE / šachovnice záchranky)
+    const half = kind === 'van' ? 1.02 : 0.9, len = kind === 'van' ? 3.9 : 3.6, y = kind === 'van' ? 1.0 : 0.72, x = kind === 'van' ? -0.4 : -0.05;
+    for (const sd of [1, -1]) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(len, kind === 'van' ? 0.4 : 0.24), emTex[type]);
+      p.position.set(x, y, sd * half);
+      if (sd < 0) p.rotation.y = Math.PI;
+      bar.add(p);
+    }
+    group.add(bar);
+    return { bar, lights };
+  }
+  function paintSlot(kind, slot, c0, c1 = c0) {
+    for (const im of pool.pools[kind].meshes) {
+      if (im.userData.slot === 'paint0') im.setColorAt(slot, c0);
+      if (im.userData.slot === 'paint1') im.setColorAt(slot, c1);
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    }
+  }
+  function updateEmergency(focus, cam, time) {
+    if (!emergencyOn) return;
+    for (const [type, kind] of EMERG) {
+      const have = vehicles.filter((v) => v.em?.type === type).length;
+      if (have >= EMERG.filter((e) => e[0] === type).length) continue;
+      for (let k = 0; k < 25; k++) {
+        const v = spawnNear(kind, focus.x, focus.z, cam, 90);
+        if (!v) continue;
+        v.em = { type, ...makeBar(type, kind) };
+        v.mood = 1.3;
+        paintSlot(kind, v.slot, type === 'police' ? C(0xdfe3e8) : C(0xf2e21a));
+        place(v);                                      // hned na místo (jinak by ho úklid vzdálených aut smazal)
+        break;
+      }
+    }
+    // majáky blikají střídavě (modrá)
+    for (const v of vehicles) {
+      if (!v.em) continue;
+      const ph = Math.floor((time + v.slot * 0.13) * 7) % 2;
+      v.em.lights[0].material.color.setHex(ph ? 0x2a50ff : 0x050a30);
+      v.em.lights[1].material.color.setHex(ph ? 0x050a30 : 0x2a50ff);
+    }
+  }
+  function setEmergency(on) {
+    emergencyOn = on;
+    if (!on) for (const v of [...vehicles]) if (v.em) removeVehicle(v);
+  }
+  /** Houkající vozidla pro zvuk sirén. */
+  const emergencyList = () => vehicles.filter((v) => v.em && !v.wreck);
 
   // ---------------------------------------------------------- linky autobusů
   const busStops = stops?.bus || [];
@@ -1233,6 +1333,12 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     index();
     for (const v of vehicles) step(v, dt);
     for (const v of [...vehicles]) {
+      if (v.jam > (v.stops ? 20 : 7)) {
+        if (v.stops || !turnAround(v)) {
+          for (const b of buses) if (b.v === v) b.v = null;
+          removeVehicle(v); continue;
+        }
+      }
       if (v.roam) {
         if (!extend(v)) { removeVehicle(v); continue; }
         if (v.s > 400) { const d = v.track.trim(v.s - 60); v.s -= d; }
@@ -1241,6 +1347,8 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     }
     updateTrains(dt);
     animWrecks(dt);
+    emTime += dt;
+    if (near) updateEmergency(focus, camera.position, emTime);
     ppool.flush();
     // světla: ve dne tlumená, v noci svítí
     const night = NIGHT.night.value;
@@ -1262,7 +1370,7 @@ export function createTraffic({ roads, bridges, buildings, world, scene, stops, 
     }
   }
   return {
-    group, update, setEnabled, refreshStops, refreshParked, hitAt, wreck, clearWrecks, get enabled() { return enabled; },
-    debug: { vehicles, trains, lines, buses, railStopS, G, parked },
+    group, update, setEnabled, refreshStops, refreshParked, hitAt, wreck, clearWrecks, setEmergency, emergencyList, get enabled() { return enabled; },
+    debug: { vehicles, trains, lines, buses, railStopS, G, parked, turnAround },
   };
 }

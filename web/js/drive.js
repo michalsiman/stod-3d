@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NIGHT } from './night.js';
-import { bang, scream, createDebris, createSmoke } from './gta.js';
+import { bang, scream, createDebris, createSmoke, createSirens } from './gta.js';
 
 // Projížďka autem: arkádová jízda po silnicích a cestách Stodska.
 //   Rychlost podle povrchu (silnice, ulice, štěrk, polní cesta, mimo cestu), náklon auta podle terénu,
@@ -413,6 +413,8 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   const hooks = { traffic: null, life: null };
   const debris = createDebris(scene, world);
   const smoke = createSmoke(scene);
+  const sirens = createSirens();
+  let emergency = false;
 
   let paintIdx = 0;
   try { paintIdx = +(localStorage.getItem('stod3d.paint') || 0) % PAINTS.length; } catch { /* ignorovat */ }
@@ -579,6 +581,12 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   const score = { people: 0, cars: 0, houses: 0, poles: 0 };
   function showScore() {
     const n = score.people + score.cars + score.houses + score.poles;
+    // po prvním nárazu někdo zavolá policii a záchranku: po městě začnou jezdit s majáky a houkat
+    if (n > 0 && !emergency) {
+      emergency = true;
+      hooks.traffic?.setEmergency(true);
+      setTimeout(() => { if (gta) flash('Někdo volal policii a záchranku! 🚓🚑'); }, 1600);
+    }
     scoreEl.innerHTML = `<b>💥 ${n}</b> <span>nárazů</span> · 🚶 ${score.people} · 🚗 ${score.cars} · 🏠 ${score.houses} · 🚦 ${score.poles}`;
   }
   function setGta(on) {
@@ -591,6 +599,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
       // všechno zmizí: zmačkaná auta, ležící a utíkající lidé, trosky, kouř, promáčkliny
       model.body.scale.set(1, 1, 1); model.body.rotation.y = 0; repair();
       hooks.traffic?.clearWrecks(); hooks.life?.clearGta(); debris.clear(); smoke.clear(); ownSmoke = false;
+      hooks.traffic?.setEmergency(false); sirens.clear(); emergency = false;
       if (st.active) flash('Demolice vypnuta');
     }
     onGta?.(on);
@@ -1068,6 +1077,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
 
     placeCamera(false, dt);
     smoke.update(dt, camera, innerHeight);
+    sirens.update(emergency && hooks.traffic?.enabled ? hooks.traffic.emergencyList() : [], camera.position, gta && sound.on);
     if (botsOn) updateTraffic(dt);
     updateGoal();
     mapT -= dt;
