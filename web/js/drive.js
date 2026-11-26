@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NIGHT } from './night.js';
-import { bang, scream, createDebris, createSmoke, createSirens } from './gta.js';
+import { bang, scream, moo, createDebris, createSmoke, createSirens } from './gta.js';
 
 // Projížďka autem: arkádová jízda po silnicích a cestách Stodska.
 //   Rychlost podle povrchu (silnice, ulice, štěrk, polní cesta, mimo cestu), náklon auta podle terénu,
@@ -400,17 +400,18 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     const L = (model.spec.nose + model.spec.tail) / 2 - 0.25;
     const c1 = Math.cos(h1) * L, s1 = Math.sin(h1) * L, c0 = Math.cos(h0) * L, s0 = Math.sin(h0) * L;
     const cx = Math.floor(x1 / 20), cz = Math.floor(z1 / 20);
+    const test = (o) => {
+      const d1 = segD(o[0], o[1], x1 - c1, z1 - s1, x1 + c1, z1 + s1);
+      return d1 <= o[2] + model.spec.hw && d1 < segD(o[0], o[1], x0 - c0, z0 - s0, x0 + c0, z0 + s0) - 1e-4;
+    };
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-      for (const o of poleGrid.get(`${cx + a},${cz + b}`) || []) {
-        const d1 = segD(o[0], o[1], x1 - c1, z1 - s1, x1 + c1, z1 + s1);
-        if (d1 > o[2] + model.spec.hw) continue;
-        if (d1 < segD(o[0], o[1], x0 - c0, z0 - s0, x0 + c0, z0 + s0) - 1e-4) return o;
-      }
+      for (const o of poleGrid.get(`${cx + a},${cz + b}`) || []) if (test(o)) return o;
     }
+    for (const o of hooks.trees?.near(x1, z1) || []) if (test(o)) { o.tree = true; return o; }   // kmeny stromů
     return null;
   }
   // napojí main.js (doprava a lidé vznikají až po autě)
-  const hooks = { traffic: null, life: null };
+  const hooks = { traffic: null, life: null, trees: null };
   const debris = createDebris(scene, world);
   const smoke = createSmoke(scene);
   const sirens = createSirens();
@@ -578,16 +579,17 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   // u domů díra a trosky, vlastní auto se postupně mačká; počítá se skóre
   const gtaBtn = hud.querySelector('[data-act=gta]');
   let gta = false, gtaCool = 0;
-  const score = { people: 0, cars: 0, houses: 0, poles: 0 };
+  const score = { people: 0, cars: 0, houses: 0, poles: 0, trees: 0, cows: 0 };
   function showScore() {
-    const n = score.people + score.cars + score.houses + score.poles;
+    const n = score.people + score.cars + score.houses + score.poles + score.trees + score.cows;
     // po prvním nárazu někdo zavolá policii a záchranku: po městě začnou jezdit s majáky a houkat
     if (n > 0 && !emergency) {
       emergency = true;
       hooks.traffic?.setEmergency(true);
       setTimeout(() => { if (gta) flash('Někdo volal policii a záchranku! 🚓🚑'); }, 1600);
     }
-    scoreEl.innerHTML = `<b>💥 ${n}</b> <span>nárazů</span> · 🚶 ${score.people} · 🚗 ${score.cars} · 🏠 ${score.houses} · 🚦 ${score.poles}`;
+    scoreEl.innerHTML = `<b>💥 ${n}</b> <span>nárazů</span> · 🚶 ${score.people} · 🚗 ${score.cars} · 🏠 ${score.houses} · 🚦 ${score.poles}`
+      + ` · 🌳 ${score.trees}` + (score.cows ? ` · 🐄 ${score.cows}` : '');
   }
   function setGta(on) {
     if (gta === on) return;
@@ -1031,8 +1033,12 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
       }
     } else if (pole) {
       v = -v * 0.25;
-      if (gta && spd > 3 && gtaCool <= 0) { gtaCool = 0.6; score.poles++; showScore(); bang('pole', sk); dent(sk * 0.7, dir > 0 ? 'front' : 'back'); }
-      else if (spd > 3 && !gta) flash('Bum! Pozor na sloup');
+      if (gta && spd > 3 && gtaCool <= 0) {
+        gtaCool = 0.6;
+        if (pole.tree) { score.trees++; bang('tree', sk); } else { score.poles++; bang('pole', sk); }
+        showScore(); dent(sk * 0.7, dir > 0 ? 'front' : 'back');
+        st.spinV = (Math.random() - 0.5) * 2 * sk;
+      } else if (spd > 3 && !gta) flash(pole.tree ? 'Bum! Pozor na strom' : 'Bum! Pozor na sloup');
     } else {
       st.x = nx; st.z = nz;
       st.odo += Math.abs(v * dt);
@@ -1048,7 +1054,9 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     // GTA: sražení lidé
     if (gta && spd > 1.5 && hooks.life) {
       const ch0 = Math.cos(st.heading) * spec.nose, sh0 = Math.sin(st.heading) * spec.nose;
-      const n = hooks.life.knock(st.x - ch0, st.z - sh0, st.x + ch0, st.z + sh0, spec.hw + 0.3, hx, hz, spd);
+      const kn = hooks.life.knock(st.x - ch0, st.z - sh0, st.x + ch0, st.z + sh0, spec.hw + 0.3, hx, hz, spd);
+      const n = kn.people;
+      if (kn.cows) { score.cows += kn.cows; showScore(); moo(); bang('house', 0.3); st.v *= 0.6; dent(0.6, dir > 0 ? 'front' : 'back'); }
       if (n) {
         score.people += n; showScore();
         for (let i = 0; i < Math.min(2, n); i++) setTimeout(scream, i * 140);

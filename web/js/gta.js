@@ -45,6 +45,10 @@ export function bang(kind = 'car', strength = 1) {
   if (kind === 'car') {
     noise(c, t + 0.02, 0.6, 'bandpass', 3200, 1800, v * 0.5, 3);           // plech
     noise(c, t + 0.06, 0.45, 'highpass', 6000, 4000, v * 0.25);             // sklo
+  } else if (kind === 'tree') {
+    // dřevo: tupé zadunění, praskání (krátké suché klapnutí několikrát) a šumění listí
+    for (let i = 0; i < 4; i++) noise(c, t + 0.03 + i * (0.04 + Math.random() * 0.05), 0.07, 'bandpass', 900 + Math.random() * 700, 500, v * 0.5, 4);
+    noise(c, t + 0.1, 1.2, 'highpass', 5000, 2500, v * 0.18);
   } else if (kind === 'house') {
     noise(c, t + 0.05, 1.1, 'lowpass', 900, 150, v * 0.6);                  // drolení
   } else {
@@ -52,6 +56,25 @@ export function bang(kind = 'car', strength = 1) {
     const g = c.createGain(); g.gain.setValueAtTime(v * 0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
     o.connect(g).connect(c.destination); o.start(t); o.stop(t + 1);
   }
+}
+
+/** Bučení krávy: hluboké „Búú“ (pila přes formant samohlásky u), výška klesá. */
+export function moo() {
+  const c = audio();
+  if (!c) return;
+  const t = c.currentTime + 0.05, dur = 1.3;
+  const o = c.createOscillator(); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(150, t); o.frequency.linearRampToValueAtTime(175, t + 0.3); o.frequency.linearRampToValueAtTime(115, t + dur);
+  const out = c.createGain();
+  out.gain.setValueAtTime(0.001, t); out.gain.exponentialRampToValueAtTime(0.4, t + 0.15);
+  out.gain.setValueAtTime(0.4, t + dur * 0.7); out.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  for (const [f, q, g] of [[320, 5, 1], [700, 6, 0.5]]) {
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+    const gg = c.createGain(); gg.gain.value = g;
+    o.connect(bp).connect(gg).connect(out);
+  }
+  out.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.05);
 }
 
 /** Výkřik „Áá!“: pila přes dva formanty samohlásky a, výška nahoru a pak dolů, s chvěním. */

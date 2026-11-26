@@ -184,7 +184,33 @@ export function createTrees({ buf, meta, world, exclude, extra = [] }) {
     return grp;
   }
 
+  // kmeny pro srážky autem: [x, z, poloměr] po blocích, počítané až při potřebě
+  const trunks = new Map();
+  function chunkTrunks(cx, cz) {
+    const k = cz * ncx + cx;
+    if (trunks.has(k)) return trunks.get(k);
+    const a = starts[k] ?? 0, b = starts[k + 1] ?? 0, out = [];
+    for (let i = a; i < b; i++) {
+      const x = u16[i * 4] * 0.2 - W / 2, z = u16[i * 4 + 1] * 0.2 - H / 2, rad = u8[i * 8 + 5] / 10;
+      if (exclude && exclude(x, z, rad)) continue;
+      out.push([x, z, u8[i * 8 + 6] & 1 ? 0.3 : 0.25]);
+    }
+    for (const t of extraBy.get(k) || []) out.push([t[0], t[1], 0.25]);
+    trunks.set(k, out);
+    return out;
+  }
   return {
+    /** Kmeny stromů do ~5 m od bodu. */
+    near(x, z) {
+      const out = [], seen = new Set();
+      for (const [ox, oz] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) {
+        const cx = Math.floor((x + ox + W / 2) / C), cz = Math.floor((z + oz + H / 2) / C);
+        if (cx < 0 || cz < 0 || cx >= ncx || cz >= H / C || seen.has(cz * ncx + cx)) continue;
+        seen.add(cz * ncx + cx);
+        for (const t of chunkTrunks(cx, cz)) if (Math.abs(t[0] - x) < 6 && Math.abs(t[1] - z) < 6) out.push(t);
+      }
+      return out;
+    },
     build(tile, group) {
       const n = meta.tile / C;
       for (let dz = 0; dz < n; dz++) {

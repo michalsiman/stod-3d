@@ -197,21 +197,21 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     return true;
   }
   // sražený chodec (režim GTA): odletí, otočí se a zůstane ležet trochu „zmačkaný“
-  const tq = new THREE.Quaternion(), dsc = new THREE.Vector3(1.25, 0.85, 1.2);
+  const tq = new THREE.Quaternion(), dsc = new THREE.Vector3(1.25, 0.85, 1.2), xAx = new THREE.Vector3(1, 0, 0);
   function knockOne(p, x, y, z, yaw, hx, hz, speed) {
     const k = Math.min(1, speed / 14);
     p.down = { x, y, z, yaw, tilt: 0, vx: hx * speed * 0.55, vz: hz * speed * 0.55, vy: 2.5 + 5 * k,
       spin: (Math.random() - 0.5) * 9, roll: Math.random() < 0.5 ? 1 : -1, rest: false };
   }
-  function animDown(p, dt) {
-    const d = p.down;
+  function animDown(p, dt) { animD(p.down, dt); }
+  function animD(d, dt) {
     if (d.rest) return;
     d.vy -= 9.81 * dt;
     d.x += d.vx * dt; d.z += d.vz * dt; d.y += d.vy * dt;
     d.vx *= 1 - dt * 0.6; d.vz *= 1 - dt * 0.6;
     d.tilt = Math.min(Math.PI / 2, d.tilt + dt * 6);
     d.yaw += d.spin * dt;
-    const g = heightAt(d.x, d.z) + 0.14;
+    const g = heightAt(d.x, d.z) + (d.lift ?? 0.14);
     if (d.y <= g && d.vy < 0) { d.y = g; d.rest = true; d.tilt = Math.PI / 2; }
   }
   function setPersonDown(i, d) {
@@ -234,6 +234,8 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
   /** Po vypnutí Demolice: pryč se sraženými a utíkajícími. */
   function clearGta() {
     for (let k = people.length - 1; k >= 0; k--) if (people[k].down) people.splice(k, 1);
+    for (let k = cyclists.length - 1; k >= 0; k--) if (cyclists[k].down) cyclists.splice(k, 1);
+    for (const c of cows) if (c.down) { c.x = c.down.x0 ?? c.x; c.z = c.down.z0 ?? c.z; c.down = null; }
     for (let k = waiting.length - 1; k >= 0; k--) if (waiting[k].down || waiting[k].run) waiting.splice(k, 1);
   }
   /** Srazit lidi v dosahu úsečky a–b (auto); vrátí počet nově sražených. */
@@ -252,7 +254,26 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       if (w.ghost || w.down || !near(w.x, w.z)) continue;
       knockOne(w, w.x, heightAt(w.x, w.z), w.z, w.yaw, hx, hz, speed); n++;
     }
-    return n;
+    // cyklista: kolo zůstane kousek za místem nárazu na boku, jezdec odletí dál
+    for (const c of cyclists) {
+      if (c.down || c.x === 1e9 || !near(c.x, c.z)) continue;
+      const g = heightAt(c.x, c.z), yaw = c.yaw ?? 0, k = Math.min(1, speed / 14);
+      c.down = { x: c.x, y: g + 0.9, z: c.z, yaw, tilt: 0, vx: hx * speed * 0.6, vz: hz * speed * 0.6, vy: 3 + 5 * k,
+        spin: (Math.random() - 0.5) * 8, roll: Math.random() < 0.5 ? 1 : -1, rest: false, lift: 0.15 };
+      c.bdown = { x: c.x, y: g, z: c.z, yaw: yaw + (Math.random() - 0.5) * 1.2, tilt: 0, vx: hx * speed * 0.3, vz: hz * speed * 0.3, vy: 1.5 + 2 * k,
+        spin: (Math.random() - 0.5) * 6, roll: Math.random() < 0.5 ? 1 : -1, rest: false, lift: 0.05 };
+      n++;
+    }
+    // kráva: těžká, odletí míň, spadne na bok a zůstane ležet (nohy do strany)
+    let nc = 0;
+    for (const c of cows) {
+      if (c.down || !near(c.x, c.z)) continue;
+      const k = Math.min(1, speed / 14);
+      c.down = { x: c.x, y: heightAt(c.x, c.z), z: c.z, yaw: c.yaw, tilt: 0, vx: hx * speed * 0.25, vz: hz * speed * 0.25, vy: 1.5 + 2.5 * k,
+        spin: (Math.random() - 0.5) * 3, roll: Math.random() < 0.5 ? 1 : -1, rest: false, lift: 0.62 };
+      nc++;
+    }
+    return { people: n, cows: nc };
   }
   function setPerson(i, x, y, z, yaw, swing) {
     pq.setFromAxisAngle(up, yaw);
@@ -357,6 +378,30 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
     }
     let i = 0;
     for (const c of cyclists) {
+      if (c.down) {
+        animD(c.down, dt); animD(c.bdown, dt);
+        c.x = c.bdown.x; c.z = c.bdown.z;
+        if (!detailAt(c.x, c.z)) continue;
+        if (c.slot !== i) {
+          c.slot = i;
+          cBike.im.setColorAt(i, c.frame); cTorso.im.setColorAt(i, c.shirt);
+          cLeg.im.setColorAt(i * 2, c.pants); cLeg.im.setColorAt(i * 2 + 1, c.pants);
+          cBike.im.instanceColor.needsUpdate = cTorso.im.instanceColor.needsUpdate = cLeg.im.instanceColor.needsUpdate = true;
+        }
+        const b = c.bdown, d = c.down;
+        q4.setFromAxisAngle(up, b.yaw).multiply(tq.setFromAxisAngle(xAx, (Math.PI / 2) * Math.min(1, b.tilt / (Math.PI / 2)) * b.roll));
+        m4.compose(v3.set(b.x, b.y, b.z), q4, s3);
+        cBike.im.setMatrixAt(i, m4); cFixed.im.setMatrixAt(i, m4);
+        q4.setFromAxisAngle(up, d.yaw).multiply(tq.setFromAxisAngle(ax, d.tilt * d.roll));
+        m4.compose(v3.set(d.x, d.y - 0.75 * (1 - Math.min(1, d.tilt / (Math.PI / 2))), d.z), q4, s3);
+        cTorso.im.setMatrixAt(i, m4);
+        for (const [k, sg] of [[0, 1], [1, -1]]) {
+          const lm = new THREE.Matrix4().compose(new THREE.Vector3(-0.12, 0.9, sg * 0.11), new THREE.Quaternion().setFromAxisAngle(ax, 0.9 * sg), s3);
+          cLeg.im.setMatrixAt(i * 2 + k, m4.clone().multiply(lm));
+        }
+        i++;
+        continue;
+      }
       c.s += c.v * dt;
       if (!extendCyclist(c)) { c.x = 1e9; continue; }
       c.tr.at(c.s, CP); c.tr.at(c.s - 1.04, CQ);
@@ -367,6 +412,7 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
       c.x = x; c.z = z;
       if (!detailAt(x, z)) continue;
       const yaw = Math.atan2(-(CP[1] - CQ[1]), CP[0] - CQ[0]);
+      c.yaw = yaw;
       const pitch = Math.atan2(yF - yR, 1.04);
       q4.setFromEuler(new THREE.Euler(0, yaw, pitch, 'YXZ'));
       m4.compose(v3.set(x, (yF + yR) / 2, z), q4, s3);
@@ -612,6 +658,21 @@ export function createLife({ roads, bridges, buildings, world, scene, meta, tree
         if (!nearCows || !detailAt(c.x, c.z)) {
           cowBody.im.setMatrixAt(ci, cowBody.zero); cowSpots.im.setMatrixAt(ci, cowBody.zero); cowFixed.im.setMatrixAt(ci, cowBody.zero); cowHead.im.setMatrixAt(ci, cowBody.zero);
           for (let l = 0; l < 4; l++) cowLeg.im.setMatrixAt(ci * 4 + l, cowBody.zero);
+          continue;
+        }
+        if (c.down) {
+          const d = c.down;
+          d.x0 ??= c.x; d.z0 ??= c.z;
+          animD(d, dt);
+          q4.setFromAxisAngle(up, d.yaw).multiply(tq.setFromAxisAngle(xAx, Math.min(Math.PI / 2, d.tilt) * d.roll));
+          m4.compose(v3.set(d.x, d.y - 0.32 * Math.min(1, d.tilt / (Math.PI / 2)), d.z), q4, s3);
+          cowBody.im.setMatrixAt(ci, m4); cowSpots.im.setMatrixAt(ci, m4); cowFixed.im.setMatrixAt(ci, m4);
+          const hm = new THREE.Matrix4().compose(new THREE.Vector3(0.95, 1.3, 0), new THREE.Quaternion().setFromAxisAngle(ax, -0.3), s3);
+          cowHead.im.setMatrixAt(ci, m4.clone().multiply(hm));
+          [[0.7, 0.24], [0.7, -0.24], [-0.7, 0.24], [-0.7, -0.24]].forEach(([lx, lz], l) => {
+            const lm = new THREE.Matrix4().compose(new THREE.Vector3(lx, 0.74, lz), new THREE.Quaternion().setFromAxisAngle(ax, 0.25), s3);
+            cowLeg.im.setMatrixAt(ci * 4 + l, m4.clone().multiply(lm));
+          });
           continue;
         }
         c.t -= dt;

@@ -211,7 +211,7 @@ const drive = createDrive({
 // živá mapa: doprava, lidé, zvířata (přepínače si pamatují volbu)
 const traffic = createTraffic({ roads, bridges: bridgeInfo, buildings, world, scene, stops, parking: [...parking, ...SQUARE_PARKING], coarse: isCoarse, drive });
 const life = createLife({ roads, bridges: bridgeInfo, buildings, world, scene, meta, treesBuf, stops, bike, sidewalks, coarse: isCoarse });
-Object.assign(drive.hooks, { traffic, life });
+Object.assign(drive.hooks, { traffic, life, trees });
 world.builders.push(() => traffic.refreshStops());
 world.builders.push(() => traffic.refreshParked());
 {
