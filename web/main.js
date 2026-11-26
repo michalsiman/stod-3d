@@ -763,6 +763,33 @@ createTimeControls({ onChange: (pos) => { sunPos = pos; applyLight(); } });
 }
 applyShadows();
 document.getElementById('loader').classList.add('done');
+// nová verze na serveru: jednou za 5 minut (a po návratu do okna) se zeptat na version.json;
+// když je jiná než ta načtená, nabídnout načtení znovu (jen jednou, „Později“ ji schová)
+{
+  const tip = document.getElementById('update-tip');
+  const mine = tip?.dataset.build;
+  if (tip && mine && !mine.startsWith('__')) {
+    let offered = false, last = 0;
+    const check = async () => {
+      if (offered || Date.now() - last < 60000) return;
+      last = Date.now();
+      try {
+        const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (j.build && j.build !== mine) {
+          offered = true;
+          tip.querySelector('.ut-ver').textContent = j.version ? `(${j.version})` : '';
+          tip.hidden = false;
+        }
+      } catch { /* bez sítě – zkusit příště */ }
+    };
+    tip.querySelector('.ut-reload').onclick = () => location.reload();
+    tip.querySelector('.ut-later').onclick = () => { tip.hidden = true; };
+    setInterval(check, 5 * 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  }
+}
 // nabídka Demolice: až když si někdo přepne na auto (jednou za načtení stránky, dá se vypnout „Už nezobrazovat“)
 {
   const ad = document.getElementById('gta-ad');

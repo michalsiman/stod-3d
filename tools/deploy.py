@@ -9,6 +9,7 @@ Hlášení uživatelů (api/data/reports.json) se nepřepisují.
 
 Spuštění:  python3 tools/deploy.py [cíl]      výchozí cíl: bludit:/var/www/ok1sim.cz/public_html/stod-3d/
 """
+import json
 import re
 import shutil
 import subprocess
@@ -49,9 +50,11 @@ def main():
             n, day = "0", time.strftime("%-d. %-m. %Y")
         human = f"1.{n}"
         for f in out.glob("*.html"):
-            t = f.read_text().replace("__VERSION__", human).replace("__DATE__", day)
+            t = f.read_text().replace("__VERSION__", human).replace("__DATE__", day).replace("__BUILD__", v)
             t = re.sub(r'((?:src|href)=")([\w./-]+\.(?:js|css))"', rf'\1\2?v={v}"', t)
             f.write_text(stamp(t, v))
+        # aktuální verze pro otevřené stránky (hlídají ji a nabídnou načtení znovu)
+        (out / "version.json").write_text(json.dumps({"build": v, "version": human, "date": day}, ensure_ascii=False))
         host, path = TARGET.split(":", 1)
         subprocess.check_call(["rsync", "-az", "--delete", "--exclude", "api/data/reports.json", f"{out}/", TARGET])
         subprocess.check_call(["ssh", host, f"chown -R www-data:www-data {path}"])

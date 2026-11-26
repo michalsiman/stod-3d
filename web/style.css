@@ -596,3 +596,9 @@ body.history #credits .hist-credit { display: inline; }
 #modes #gta-mode[hidden] { display: none; }
 /* otevřené menu je nad panelem auta, tlačítky letu i skóre (jinak by je zakrývaly) */
 body.menu-open #title { z-index: 6; }
+
+/* nabídka nové verze (version.json) */
+#update-tip { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 15; width: min(420px, calc(100vw - 24px));
+  padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.45; border: 1px solid var(--accent); }
+#update-tip[hidden] { display: none; }
+#update-tip .ut-reload { background: var(--accent); color: var(--accent-ink); border: 0; }
