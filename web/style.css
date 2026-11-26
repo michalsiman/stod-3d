@@ -594,3 +594,5 @@ body.history #credits .hist-credit { display: inline; }
   .fc-pad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(2, 50px); gap: 6px; }
 }
 #modes #gta-mode[hidden] { display: none; }
+/* otevřené menu je nad panelem auta, tlačítky letu i skóre (jinak by je zakrývaly) */
+body.menu-open #title { z-index: 6; }
