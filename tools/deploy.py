@@ -41,14 +41,21 @@ def main():
             if "vendor" in f.parts:
                 continue
             f.write_text(stamp(f.read_text(), v))
+        # verze pro lidi: 1.<počet commitů>, datum vydání = datum posledního commitu
+        try:
+            n = subprocess.check_output(["git", "-C", str(ROOT), "rev-list", "--count", "HEAD"], text=True).strip()
+            day = subprocess.check_output(["git", "-C", str(ROOT), "log", "-1", "--format=%cd", "--date=format:%-d. %-m. %Y"], text=True).strip()
+        except (OSError, subprocess.CalledProcessError):
+            n, day = "0", time.strftime("%-d. %-m. %Y")
+        human = f"1.{n}"
         for f in out.glob("*.html"):
-            t = f.read_text()
+            t = f.read_text().replace("__VERSION__", human).replace("__DATE__", day)
             t = re.sub(r'((?:src|href)=")([\w./-]+\.(?:js|css))"', rf'\1\2?v={v}"', t)
             f.write_text(stamp(t, v))
         host, path = TARGET.split(":", 1)
         subprocess.check_call(["rsync", "-az", "--delete", "--exclude", "api/data/reports.json", f"{out}/", TARGET])
         subprocess.check_call(["ssh", host, f"chown -R www-data:www-data {path}"])
-    print(f"nasazeno, verze {v} → {TARGET}")
+    print(f"nasazeno, verze {human} ({v}) → {TARGET}")
 
 
 if __name__ == "__main__":

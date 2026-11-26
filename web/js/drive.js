@@ -315,20 +315,41 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     <circle r="11" fill="currentColor"/>
     <path d="M-42 -4 L-11 -4 L-6 9 L-4 42 L4 42 L6 9 L11 -4 L42 -4" fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/>
     <rect x="-3" y="-50" width="6" height="12" rx="2" fill="#e8b04a"/></svg>`;
-  touch.innerHTML = `<div class="dt-wheel" title="Volant">${WHEEL_SVG}</div>
+  touch.innerHTML = `<div class="dt-left">
+      <button class="dt-mode" title="Přepnout volant / šipky">◀ ▶</button>
+      <div class="dt-wheel" title="Volant">${WHEEL_SVG}</div>
+      <div class="dt-arrows" hidden><button data-k="ArrowLeft" title="Doleva">◀</button><button data-k="ArrowRight" title="Doprava">▶</button></div>
+    </div>
     <div class="dt-pedals"><button data-k="ArrowDown" class="brake" title="Couvání">R</button>
       <button data-k="ArrowUp" class="gas" title="Plyn"><span>PLYN</span></button></div>`;
   document.body.appendChild(touch);
   const touchKeys = new Set();
-  touch.querySelectorAll('button').forEach((b) => {
+  touch.querySelectorAll('button[data-k]').forEach((b) => {
     const on = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* bez zachycení */ } touchKeys.add(b.dataset.k); b.classList.add('on'); sound.start(); };
     const off = (e) => { e.preventDefault(); touchKeys.delete(b.dataset.k); b.classList.remove('on'); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off);
     b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
   });
-  // volant: úhel prstu kolem středu volantu oproti místu, kde se ho prst chytil; ±150° = plný rejd
-  const wheel = touch.querySelector('.dt-wheel');
-  const WHEEL_MAX = 150;
+  // volant, nebo šipky ◀ ▶ (přepínač nad nimi, volba se pamatuje)
+  const wheel = touch.querySelector('.dt-wheel'), arrows = touch.querySelector('.dt-arrows'), modeBtn = touch.querySelector('.dt-mode');
+  let useArrows = false;
+  try { useArrows = localStorage.getItem('stod3d.steer') === 'arrows'; } catch { /* bez úložiště */ }
+  const showMode = () => {
+    wheel.hidden = useArrows; arrows.hidden = !useArrows;
+    modeBtn.textContent = useArrows ? '🎡 volant' : '◀ ▶ šipky';
+  };
+  modeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    useArrows = !useArrows;
+    try { localStorage.setItem('stod3d.steer', useArrows ? 'arrows' : 'wheel'); } catch { /* bez úložiště */ }
+    wheelId = null; wheelAng = 0; st.touchSteer = 0; showWheel();
+    touchKeys.delete('ArrowLeft'); touchKeys.delete('ArrowRight');
+    showMode();
+  });
+  // volant: úhel prstu kolem středu volantu oproti místu, kde se ho prst chytil; ±200° = plný rejd,
+  // kolem středu jemněji (mírná křivka), aby malé pohyby prstu auto jen lehce natočily
+  const WHEEL_MAX = 200;
+  const wheelSteer = () => { const x = -wheelAng / WHEEL_MAX; return Math.sign(x) * Math.abs(x) ** 1.35; };
   let wheelId = null, grabAng = 0, wheelBase = 0, wheelAng = 0;
   st.touchSteer = 0;
   const angAt = (e) => {
@@ -349,7 +370,7 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
     d = ((d + 540) % 360) - 180;                              // přes ±180° bez skoku
     if (Math.abs(d) > 120) { grabAng += d; wheelBase += d; d = 0; }  // dlouhé otáčení: chytit znovu
     wheelAng = THREE.MathUtils.clamp(wheelBase + d, -WHEEL_MAX, WHEEL_MAX);
-    st.touchSteer = -wheelAng / WHEEL_MAX;                    // doprava (po směru hodin) = zatáčet doprava
+    st.touchSteer = wheelSteer();                             // doprava (po směru hodin) = zatáčet doprava
     showWheel();
   });
   const wheelOff = (e) => {
@@ -363,9 +384,10 @@ export function createDrive({ roads, bridges, buildings, streets, pois, world, s
   const wheelReturn = (dt) => {
     if (wheelId !== null || !wheelAng) return;
     wheelAng = Math.abs(wheelAng) < 2 ? 0 : wheelAng - Math.sign(wheelAng) * Math.min(Math.abs(wheelAng), 420 * dt);
-    st.touchSteer = -wheelAng / WHEEL_MAX;
+    st.touchSteer = wheelSteer();
     showWheel();
   };
+  showMode();
   const $ = (s) => hud.querySelector(s);
   hud.querySelector('[data-act=view]').onclick = () => cycleView();
   hud.querySelector('[data-act=goal]').onclick = () => newGoal();

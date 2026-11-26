@@ -369,6 +369,7 @@ function setMode(next) {
     camera.lookAt(camera.position.clone().add(dir));
   }
   mode = next;
+  flyAgl = null;
   document.body.classList.toggle('driving', mode === 'drive');
   document.body.dataset.mode = mode;
   document.querySelectorAll('#modes [data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
@@ -417,12 +418,18 @@ addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
+// létání: dopředu/dozadu/do stran vodorovně a ve stále stejné výšce nad terénem (kopce kopíruje),
+// výšku mění jen Q/E – i když se díváš dolů, letí se rovně, ne do země
+let flyAgl = null;
 function updateFree(dt) {
   const walk = mode === 'walk';
   const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
   const speed = walk ? (fast ? 9 : 3) : (fast ? 220 : 50);
+  const ground = () => world.heightAt(camera.position.x, camera.position.z);
+  if (!walk && flyAgl === null) flyAgl = Math.max(5, camera.position.y - ground());
   camera.getWorldDirection(fwd);
-  if (walk) fwd.y = 0;
+  fwd.y = 0;
+  if (fwd.lengthSq() < 1e-6) { const e = camera.matrixWorld.elements; fwd.set(e[4], 0, e[6]); }   // pohled kolmo dolů: dopředu = horní okraj obrazu
   fwd.normalize();
   right.crossVectors(fwd, camera.up).normalize();
   move.set(0, 0, 0);
@@ -430,13 +437,15 @@ function updateFree(dt) {
   if (keys.has('KeyS') || keys.has('ArrowDown')) move.sub(fwd);
   if (keys.has('KeyD') || keys.has('ArrowRight')) move.add(right);
   if (keys.has('KeyA') || keys.has('ArrowLeft')) move.sub(right);
-  if (!walk && keys.has('KeyE')) move.y += 1;
-  if (!walk && keys.has('KeyQ')) move.y -= 1;
   if (move.lengthSq()) { camera.position.addScaledVector(move.normalize(), speed * dt); dirty = true; }
-  if (walk) {
-    const target = world.heightAt(camera.position.x, camera.position.z) + 1.7;
+  if (!walk) {
+    const up = (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0);
+    if (up) flyAgl = THREE.MathUtils.clamp(flyAgl + up * speed * dt * Math.max(1, flyAgl / 150), 3, 3000);
+  }
+  {
+    const target = ground() + (walk ? 1.7 : flyAgl);
     if (Math.abs(target - camera.position.y) > 0.01) {
-      camera.position.y += (target - camera.position.y) * Math.min(1, dt * 10);
+      camera.position.y += (target - camera.position.y) * Math.min(1, dt * (walk ? 10 : 5));
       dirty = true;
     }
   }

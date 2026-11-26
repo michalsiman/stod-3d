@@ -401,6 +401,10 @@ body.picking::after {
 .btn:hover, #report-links button:hover { background: var(--soft-2); }
 #report-links a { color: var(--accent); text-decoration: none; font-weight: 500; }
 #report-links a:hover { text-decoration: underline; }
+#about { display: flex; flex-direction: column; gap: 3px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--soft-2);
+  font-size: 11.5px; line-height: 1.45; opacity: 0.8; text-align: center; }
+#about a { color: var(--accent); text-decoration: none; }
+#about a:hover { text-decoration: underline; }
 
 /* ostatní panely ve stejném stylu */
 #poi-info { border-radius: 16px; top: 14px; right: 14px; }
@@ -450,6 +454,11 @@ body.driving #help, body.driving #help-toggle, body.driving #poi-info { display:
 .dt-wheel { width: 164px; height: 164px; border-radius: 50%; color: rgba(255, 255, 255, 0.92);
   background: radial-gradient(circle, rgba(18, 24, 22, 0.25) 0 58%, rgba(18, 24, 22, 0.55) 60%);
   backdrop-filter: blur(4px); filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)); }
+.dt-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#drive-touch .dt-mode { padding: 6px 12px; border-radius: 14px; font-size: 13px; font-weight: 600; background: rgba(18, 24, 22, 0.6); }
+.dt-wheel[hidden], .dt-arrows[hidden] { display: none; }
+.dt-arrows { display: flex; gap: 12px; }
+#drive-touch .dt-arrows button { width: 84px; height: 96px; border-radius: 18px; font-size: 30px; background: rgba(18, 24, 22, 0.6); }
 .dt-wheel svg { width: 100%; height: 100%; display: block; }
 .dt-wheel.on { color: #fff; }
 .dt-pedals { display: flex; gap: 12px; align-items: flex-end; }
